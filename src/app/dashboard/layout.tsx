@@ -1,7 +1,23 @@
 'use client';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { FirebaseClientProvider } from '@/firebase';
+import { FirebaseClientProvider, useUser } from '@/firebase';
+import { Loader2 } from 'lucide-react';
+
+function DashboardContent({ children }: { children: React.ReactNode }) {
+  const { user, isUserLoading } = useUser();
+
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  return <AppLayout>{children}</AppLayout>;
+}
+
 
 export default function DashboardLayout({
   children,
@@ -10,7 +26,7 @@ export default function DashboardLayout({
 }) {
   return (
     <FirebaseClientProvider>
-      <AppLayout>{children}</AppLayout>
+      <DashboardContent>{children}</DashboardContent>
     </FirebaseClientProvider>
   );
 }

@@ -289,11 +289,9 @@ export default function DashboardPage() {
 
   // The parent layout now handles the main loading state
   if (isUserLoading || !user) {
-    return (
-        <div className="flex items-center justify-center h-screen">
-            <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-    );
+    // This part will likely not be seen because of the new layout structure,
+    // but it's good practice to keep it as a fallback.
+    return null;
   }
 
   return (
