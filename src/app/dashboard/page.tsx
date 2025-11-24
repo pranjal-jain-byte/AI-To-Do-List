@@ -22,7 +22,7 @@ function TodaysPlan() {
     const firestore = useFirestore();
     
     const tasksQuery = useMemoFirebase(() => {
-        if (!user || !user.uid) return null; // Wait for user
+        if (!user?.uid) return null; // Wait for user
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
@@ -34,7 +34,7 @@ function TodaysPlan() {
             where('dueDate', '>=', today.toISOString()),
             where('dueDate', '<', tomorrow.toISOString())
         );
-    }, [firestore, user]);
+    }, [firestore, user?.uid]);
 
     const { data: initialTasks, isLoading } = useCollection<Task>(tasksQuery);
     const [todaysTasks, setTodaysTasks] = useState<Task[]>([]);
@@ -333,3 +333,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
