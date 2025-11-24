@@ -14,40 +14,41 @@ import { useRouter } from 'next/navigation';
 import { AskAiDialog } from '@/components/dashboard/ask-ai-dialog';
 import { createTaskFromText } from '@/ai/flows/create-task-from-text';
 import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, doc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 function TodaysPlan() {
     const { user } = useUser();
     const firestore = useFirestore();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
+    
     const tasksQuery = useMemoFirebase(() => {
         if (!user) return null;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
         return query(
             collection(firestore, 'tasks'),
             where('ownerId', '==', user.uid),
+            where('status', '!=', 'done'),
             where('dueDate', '>=', today.toISOString()),
             where('dueDate', '<', tomorrow.toISOString())
         );
-    }, [firestore, user, today, tomorrow]);
+    }, [firestore, user]);
 
     const { data: initialTasks, isLoading } = useCollection<Task>(tasksQuery);
     const [todaysTasks, setTodaysTasks] = useState<Task[]>([]);
     const [isReplanning, setIsReplanning] = useState(false);
     const { toast } = useToast();
     
-    useState(() => {
+    useEffect(() => {
         if (initialTasks) {
             setTodaysTasks(initialTasks.slice(0, 5));
         }
-    });
+    }, [initialTasks]);
 
     const handleReplan = async () => {
-        if (!todaysTasks) return;
+        if (!todaysTasks || todaysTasks.length === 0) return;
         setIsReplanning(true);
         try {
             const result = await suggestTaskOrder({ tasks: todaysTasks });
@@ -89,7 +90,7 @@ function TodaysPlan() {
             </CardHeader>
             <CardContent>
                 {isLoading && <p>Loading today's plan...</p>}
-                {!isLoading && todaysTasks.length > 0 ? (
+                {!isLoading && todaysTasks && todaysTasks.length > 0 ? (
                 <ul className="space-y-4">
                     {todaysTasks.map((task, index) => (
                         <li key={task.id} className="flex items-start gap-4">
@@ -230,7 +231,7 @@ export default function DashboardPage() {
     setTaskToEdit(null);
   };
   
-  const handleSaveTeam = (teamData: Omit<Team, 'id' | 'members'>) => {
+  const handleSaveTeam = (teamData: Omit<Team, 'id' | 'members' | 'createdAt'>) => {
     if(!user) return;
     
     const newTeam: Omit<Team, 'id'> = {
@@ -332,3 +333,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
