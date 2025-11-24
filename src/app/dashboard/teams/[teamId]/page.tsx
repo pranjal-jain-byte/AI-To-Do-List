@@ -19,58 +19,61 @@ const priorityVariant = {
   Critical: 'destructive',
 } as const;
 
-function MemberList({ memberIds }: { memberIds: string[] }) {
-    const firestore = useFirestore();
-    const { user: currentUser } = useUser();
+function MemberListItem({ memberId }: { memberId: string }) {
+  const firestore = useFirestore();
+  const { user: currentUser } = useUser();
 
-    // Fetch each member's document individually using useDoc.
-    const memberDocs = memberIds.map(id => {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        const userDocRef = useMemoFirebase(() => {
-            if (!id) return null;
-            return doc(firestore, 'users', id);
-        }, [firestore, id]);
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        return useDoc<User>(userDocRef);
-    });
+  const userDocRef = useMemoFirebase(() => {
+    if (!memberId) return null;
+    return doc(firestore, 'users', memberId);
+  }, [firestore, memberId]);
 
-    const isLoading = memberDocs.some(doc => doc.isLoading);
-    const members = memberDocs.map(doc => doc.data).filter((m): m is User => !!m);
+  const { data: member, isLoading } = useDoc<User>(userDocRef);
 
-    if (isLoading) {
-        return (
-             <div className="space-y-4">
-                {[...Array(memberIds.length || 2)].map((_, i) => (
-                    <div key={i} className="flex items-center gap-4">
-                        <Avatar>
-                           <AvatarFallback><Loader2 className="h-5 w-5 animate-spin" /></AvatarFallback>
-                        </Avatar>
-                        <div className="space-y-2">
-                           <div className="h-4 w-24 rounded-md bg-muted animate-pulse" />
-                           <div className="h-3 w-32 rounded-md bg-muted animate-pulse" />
-                        </div>
-                    </div>
-                ))}
-            </div>
-        )
-    }
-
+  if (isLoading) {
     return (
-        <ul className="space-y-4">
-        {members.map((member) => (
-            <li key={member.id} className="flex items-center gap-4">
-            <Avatar>
-                <AvatarImage src={member.avatarUrl} />
-                <AvatarFallback>{member.name?.charAt(0) || '?'}</AvatarFallback>
-            </Avatar>
-            <div>
-                <p className="font-medium">{member.name} {member.id === currentUser?.uid && '(You)'}</p>
-                <p className="text-sm text-muted-foreground">{member.email}</p>
-            </div>
-            </li>
-        ))}
-        </ul>
+      <div className="flex items-center gap-4">
+        <Avatar>
+          <AvatarFallback><Loader2 className="h-5 w-5 animate-spin" /></AvatarFallback>
+        </Avatar>
+        <div className="space-y-2">
+          <div className="h-4 w-24 rounded-md bg-muted animate-pulse" />
+          <div className="h-3 w-32 rounded-md bg-muted animate-pulse" />
+        </div>
+      </div>
     );
+  }
+
+  if (!member) {
+    return null; // Or show some placeholder for a user that couldn't be fetched
+  }
+
+  return (
+    <li className="flex items-center gap-4">
+      <Avatar>
+        <AvatarImage src={member.avatarUrl} />
+        <AvatarFallback>{member.name?.charAt(0) || '?'}</AvatarFallback>
+      </Avatar>
+      <div>
+        <p className="font-medium">{member.name} {member.id === currentUser?.uid && '(You)'}</p>
+        <p className="text-sm text-muted-foreground">{member.email}</p>
+      </div>
+    </li>
+  );
+}
+
+function MemberList({ memberIds }: { memberIds: string[] }) {
+  if (!memberIds || memberIds.length === 0) {
+    return <p className="text-sm text-muted-foreground">No members in this team yet.</p>;
+  }
+
+  return (
+    <ul className="space-y-4">
+      {memberIds.map((id) => (
+        <MemberListItem key={id} memberId={id} />
+      ))}
+    </ul>
+  );
 }
 
 export default function TeamDetailsPage() {
