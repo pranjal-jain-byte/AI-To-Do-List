@@ -284,8 +284,8 @@ export default function DashboardPage() {
   }
 
   // The parent layout now handles the main loading state
-  if (!user) {
-      return null;
+  if (isUserLoading || !user) {
+    return null;
   }
 
   return (
