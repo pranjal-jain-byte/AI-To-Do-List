@@ -22,7 +22,7 @@ function TodaysPlan() {
     const firestore = useFirestore();
     
     const tasksQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || !user.uid) return null; // Wait for user
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
@@ -333,5 +333,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
