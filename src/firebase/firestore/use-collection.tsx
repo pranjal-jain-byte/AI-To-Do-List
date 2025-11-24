@@ -64,7 +64,8 @@ export function useCollection<T = any>(
   useEffect(() => {
     if (!memoizedTargetRefOrQuery) {
       setData(null);
-      setIsLoading(false);
+      // Set loading to true when waiting for a valid query
+      setIsLoading(true);
       setError(null);
       return;
     }
@@ -107,8 +108,10 @@ export function useCollection<T = any>(
 
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
-  if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
+  
+  if (memoizedTargetRefOrQuery && (memoizedTargetRefOrQuery as any).__memo !== true) {
+    console.warn('useCollection was called with a query that was not created with useMemoFirebase. This can lead to infinite loops and performance issues.', memoizedTargetRefOrQuery);
   }
+  
   return { data, isLoading, error };
 }

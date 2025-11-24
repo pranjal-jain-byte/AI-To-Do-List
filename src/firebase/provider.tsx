@@ -17,7 +17,6 @@ export interface FirebaseContextState {
   // User authentication state
   user: LocalUser | null;
   isUserLoading: boolean; 
-  setUser: (user: LocalUser | null) => void;
 }
 
 // Return type for useFirebase()
@@ -27,14 +26,12 @@ export interface FirebaseServicesAndUser {
   auth: Auth;
   user: LocalUser | null;
   isUserLoading: boolean;
-  setUser: (user: LocalUser | null) => void;
 }
 
 // Return type for useUser() - specific to user auth state
 export interface UserHookResult {
   user: LocalUser | null;
   isUserLoading: boolean;
-  setUser: (user: LocalUser | null) => void;
 }
 
 // React Context
@@ -79,7 +76,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth: servicesAvailable ? auth : null,
       user: user,
       isUserLoading: isUserLoading,
-      setUser: setUser,
     };
   }, [firebaseApp, firestore, auth, user, isUserLoading]);
 
@@ -112,7 +108,6 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     auth: context.auth,
     user: context.user,
     isUserLoading: context.isUserLoading,
-    setUser: context.setUser,
   };
 };
 
@@ -137,10 +132,20 @@ export const useFirebaseApp = (): FirebaseApp => {
 type MemoFirebase <T> = T & {__memo?: boolean};
 
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | (MemoFirebase<T>) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoized = useMemo(factory, deps);
   
-  if(typeof memoized !== 'object' || memoized === null) return memoized;
-  (memoized as MemoFirebase<T>).__memo = true;
+  if(typeof memoized === 'object' && memoized !== null) {
+    try {
+      Object.defineProperty(memoized, '__memo', {
+        value: true,
+        writable: false,
+        enumerable: false,
+      });
+    } catch (e) {
+      // This may fail on frozen objects, but that's okay.
+    }
+  }
   
   return memoized;
 }
@@ -151,6 +156,6 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
  * @returns {UserHookResult} Object with user, isUserLoading, userError.
  */
 export const useUser = (): UserHookResult => {
-  const { user, isUserLoading, setUser } = useFirebase(); // Leverages the main hook
-  return { user, isUserLoading, setUser };
+  const { user, isUserLoading } = useFirebase(); // Leverages the main hook
+  return { user, isUserLoading };
 };

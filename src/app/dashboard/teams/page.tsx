@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Team } from '@/lib/types';
+import type { Team, User } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Users, Loader2 } from 'lucide-react';
@@ -16,14 +16,18 @@ import { collection, query, where, addDoc, serverTimestamp, doc } from 'firebase
 function TeamMembers({ memberIds }: { memberIds: string[] }) {
     const firestore = useFirestore();
 
+    // Correctly fetch each member's document individually using useDoc.
     const memberDocs = memberIds.slice(0, 3).map(id => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const userDocRef = useMemoFirebase(() => doc(firestore, 'users', id), [firestore, id]);
+        const userDocRef = useMemoFirebase(() => {
+            if (!id) return null;
+            return doc(firestore, 'users', id);
+        }, [firestore, id]);
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        return useDoc<any>(userDocRef);
+        return useDoc<User>(userDocRef);
     });
 
-    const members = memberDocs.map(doc => doc.data).filter((m): m is any => !!m);
+    const members = memberDocs.map(doc => doc.data).filter((m): m is User => !!m);
 
     return (
         <div className="flex items-center space-x-2">
