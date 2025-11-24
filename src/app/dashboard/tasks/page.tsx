@@ -144,9 +144,9 @@ export default function TasksPage() {
   const firestore = useFirestore();
   
   const tasksQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(collection(firestore, 'tasks'), where('ownerId', '==', user.uid));
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const { data: tasks, isLoading } = useCollection<Task>(tasksQuery);
 
