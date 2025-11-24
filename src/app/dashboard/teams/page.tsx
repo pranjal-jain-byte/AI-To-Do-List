@@ -1,11 +1,19 @@
-import { teams } from '@/lib/data';
+'use client';
+
+import { useState } from 'react';
+import { teams as initialTeams, users } from '@/lib/data';
+import type { Team, User } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TeamDialog } from '@/components/dashboard/team-dialog';
+import { useRouter } from 'next/navigation';
 
-function TeamCard({ team }: { team: (typeof teams)[0] }) {
+function TeamCard({ team }: { team: Team }) {
+  const router = useRouter();
+
   return (
     <Card className="flex flex-col">
       <CardHeader>
@@ -14,7 +22,7 @@ function TeamCard({ team }: { team: (typeof teams)[0] }) {
                 <Users className="h-5 w-5 text-primary"/>
                 {team.name}
             </CardTitle>
-            <Button variant="outline" size="sm">View</Button>
+            <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/teams/${team.id}`)}>View</Button>
         </div>
         <CardDescription>{team.description}</CardDescription>
       </CardHeader>
@@ -49,11 +57,25 @@ function TeamCard({ team }: { team: (typeof teams)[0] }) {
 }
 
 export default function TeamsPage() {
+  const [teams, setTeams] = useState<Team[]>(initialTeams);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleSaveTeam = (teamData: Omit<Team, 'id' | 'members'> & { memberIds: string[] }) => {
+    const newTeam: Team = {
+        id: `team-${Math.floor(Math.random() * 10000)}`,
+        name: teamData.name,
+        description: teamData.description,
+        members: users.filter(u => teamData.memberIds.includes(u.id))
+    };
+    setTeams([newTeam, ...teams]);
+    setIsDialogOpen(false);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold font-headline">Teams & Projects</h1>
-        <Button>
+        <Button onClick={() => setIsDialogOpen(true)}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Create Team
         </Button>
@@ -64,6 +86,13 @@ export default function TeamsPage() {
           <TeamCard key={team.id} team={team} />
         ))}
       </div>
+
+      <TeamDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSave={handleSaveTeam}
+        allUsers={users}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { placeholderImages } from '@/lib/placeholder-images';
 import type { User, Team, Task, Note } from './types';
 
-const users: User[] = [
+export const users: User[] = [
   { id: 'user-1', name: 'Sarah Lee', email: 'sarah@example.com', avatarUrl: placeholderImages.find(p => p.id === 'avatar1')?.imageUrl || '' },
   { id: 'user-2', name: 'Mike Chen', email: 'mike@example.com', avatarUrl: placeholderImages.find(p => p.id === 'avatar2')?.imageUrl || '' },
   { id: 'user-3', name: 'Jessica Brown', email: 'jessica@example.com', avatarUrl: placeholderImages.find(p => p.id === 'avatar3')?.imageUrl || '' },
@@ -105,6 +105,18 @@ export const tasks: Task[] = [
         estimatedDuration: 60,
         tags: ["study", "personal"],
         ownerId: "user-1",
+    },
+    {
+      id: 'TASK-5555',
+      title: 'Update website copy',
+      description: 'Review and update all website copy for clarity and SEO.',
+      status: 'todo',
+      priority: 'Low',
+      dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+      estimatedDuration: 120,
+      tags: ['website', 'content'],
+      ownerId: 'user-6',
+      teamId: 'team-3'
     }
 ];
 
