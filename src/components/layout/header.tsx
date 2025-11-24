@@ -3,16 +3,19 @@
 import React, { useState } from 'react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Zap, ChevronRight, Loader2 } from 'lucide-react';
+import { Zap, ChevronRight } from 'lucide-react';
 import { UserNav } from './user-nav';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { AskAiDialog } from '@/components/dashboard/ask-ai-dialog';
-import { createTaskFromText, CreateTaskFromTextOutput } from '@/ai/flows/create-task-from-text';
+import { createTaskFromText } from '@/ai/flows/create-task-from-text';
 import { useToast } from '@/hooks/use-toast';
 import { TaskDialog } from '../dashboard/task-dialog';
-import { Task } from '@/lib/types';
+import type { Task } from '@/lib/types';
+import { useFirestore, useUser } from '@/firebase';
+import { addDoc, collection, doc, serverTimestamp } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 function Breadcrumbs() {
@@ -46,8 +49,10 @@ function Breadcrumbs() {
 export default function Header() {
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  const [taskToEdit, setTaskToEdit] = useState<Partial<Task> | null>(null);
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
   
   const handleAiSubmit = async (command: string) => {
     try {
@@ -64,7 +69,7 @@ export default function Header() {
             priority: result.priority || 'Medium',
         };
 
-        setTaskToEdit(partialTask as Task);
+        setTaskToEdit(partialTask);
         setIsAiDialogOpen(false);
         setIsTaskDialogOpen(true);
 
@@ -78,11 +83,32 @@ export default function Header() {
     }
   };
 
-  const handleSaveTask = (taskData: Omit<Task, 'id' | 'ownerId' | 'status'> & { id?: string }) => {
-    // In a real app, you would save this to your database
-    console.log('Saving task:', taskData);
+  const handleSaveTask = (taskData: Omit<Task, 'id' | 'ownerId' | 'status' | 'version' | 'createdAt' | 'updatedAt' | 'completedAt'> & { id?: string }) => {
+    if (!user) return;
+
+    if (taskData.id) {
+        const taskRef = doc(firestore, 'tasks', taskData.id);
+        setDocumentNonBlocking(taskRef, {
+            ...taskData,
+            updatedAt: serverTimestamp(),
+        }, { merge: true });
+    } else {
+        const taskToSave: Omit<Task, 'id'> = {
+            ...taskData,
+            ownerId: user.uid,
+            status: 'todo',
+            version: 1,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            completedAt: null,
+            tags: [],
+            description: taskData.description || '',
+        };
+        addDoc(collection(firestore, 'tasks'), taskToSave);
+    }
+    
     toast({
-        title: "Task created!",
+        title: taskData.id ? "Task updated!" : "Task created!",
         description: `"${taskData.title}" has been saved.`,
     });
     setIsTaskDialogOpen(false);
