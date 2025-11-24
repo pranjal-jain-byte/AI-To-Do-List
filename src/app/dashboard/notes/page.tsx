@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useCollection, useMemoFirebase } from '@/firebase';
-import type { Note } from '@/lib/types';
+import type { Note, Task } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, PlusCircle, BrainCircuit, ListTodo, Loader2, CheckSquare } from 'lucide-react';
@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function NotesPage() {
     const { user } = useUser();
@@ -34,6 +34,7 @@ export default function NotesPage() {
     const [isExtracting, setIsExtracting] = useState(false);
     const [extractedTasks, setExtractedTasks] = useState<string[] | null>(null);
     const [isTasksDialogOpen, setIsTasksDialogOpen] = useState(false);
+    const [isAddingTasks, setIsAddingTasks] = useState(false);
     const { toast } = useToast();
 
     const handleSummarize = async () => {
@@ -79,6 +80,46 @@ export default function NotesPage() {
             setIsTasksDialogOpen(false);
         } finally {
             setIsExtracting(false);
+        }
+    };
+
+    const handleAddTasksToMyTasks = async () => {
+        if (!extractedTasks || !user) return;
+        setIsAddingTasks(true);
+
+        try {
+            const tasksCollection = collection(firestore, 'tasks');
+            for (const taskTitle of extractedTasks) {
+                const newTask: Omit<Task, 'id'> = {
+                    title: taskTitle,
+                    ownerId: user.uid,
+                    status: 'todo',
+                    priority: 'Medium',
+                    dueDate: new Date().toISOString(),
+                    estimatedDuration: 30,
+                    version: 1,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                    completedAt: null,
+                    tags: ['extracted'],
+                    description: 'Extracted from note.',
+                };
+                await addDoc(tasksCollection, newTask);
+            }
+            toast({
+                title: "Tasks added!",
+                description: `${extractedTasks.length} tasks have been added to your 'My Tasks' list.`,
+            });
+            setIsTasksDialogOpen(false);
+        } catch (error) {
+            console.error("Failed to add tasks:", error);
+            toast({
+                variant: "destructive",
+                title: "Uh oh! Something went wrong.",
+                description: "Could not add extracted tasks.",
+            });
+        } finally {
+            setIsAddingTasks(false);
         }
     };
 
@@ -223,8 +264,17 @@ export default function NotesPage() {
                         )}
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsTasksDialogOpen(false)}>Close</Button>
-                        <Button>Add to My Tasks</Button>
+                        <Button variant="outline" onClick={() => setIsTasksDialogOpen(false)} disabled={isAddingTasks}>Close</Button>
+                        <Button onClick={handleAddTasksToMyTasks} disabled={isAddingTasks || !extractedTasks || extractedTasks.length === 0}>
+                            {isAddingTasks ? (
+                                <>
+                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                 Adding...
+                                </>
+                            ) : (
+                                "Add to My Tasks"
+                            )}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
