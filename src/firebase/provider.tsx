@@ -64,10 +64,12 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   const [isUserLoading, setIsUserLoading] = useState(true);
 
   useEffect(() => {
-    // Try to load user from localStorage on initial load
-    const storedUser = localStorage.getItem('chronos-user');
+    // This effect runs once on mount to establish the initial loading state.
+    // In a real auth flow, you might check localStorage or onAuthStateChanged here.
+    // For this simplified flow, we just transition from loading to not loading.
+    const storedUser = sessionStorage.getItem('chronos-user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+        setUser(JSON.parse(storedUser));
     }
     setIsUserLoading(false);
   }, []);
@@ -75,9 +77,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   const handleSetUser = (user: LocalUser | null) => {
     setUser(user);
     if (user) {
-      localStorage.setItem('chronos-user', JSON.stringify(user));
+      sessionStorage.setItem('chronos-user', JSON.stringify(user));
     } else {
-      localStorage.removeItem('chronos-user');
+      sessionStorage.removeItem('chronos-user');
     }
   }
 
