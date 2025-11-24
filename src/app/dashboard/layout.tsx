@@ -4,23 +4,23 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { FirebaseClientProvider, useUser } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
 
   useEffect(() => {
+    // Only check for user and redirect after the initial loading is complete.
     if (!isUserLoading) {
-      setInitialCheckComplete(true);
       if (!user) {
         router.push('/start');
       }
     }
   }, [isUserLoading, user, router]);
 
-  if (!initialCheckComplete || !user) {
+  // While loading, or if there's no user and we are about to redirect, show a spinner.
+  if (isUserLoading || !user) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -28,6 +28,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If user is loaded and exists, render the main layout.
   return <AppLayout>{children}</AppLayout>;
 }
 
