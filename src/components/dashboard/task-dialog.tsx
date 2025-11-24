@@ -97,13 +97,19 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
   }, [task, form, isOpen]);
 
   const onSubmit = (data: TaskFormValues) => {
-    const dataToSave = {
+    const dataToSave: any = {
         ...data,
         estimatedDuration: data.estimatedDuration || 30,
         dueDate: data.dueDate.toISOString(),
         id: task?.id,
-        teamId: data.teamId === 'none' ? undefined : data.teamId,
     };
+
+    if (data.teamId && data.teamId !== 'none') {
+        dataToSave.teamId = data.teamId;
+    } else {
+        delete dataToSave.teamId;
+    }
+
     onSave(dataToSave);
   };
 
