@@ -1,0 +1,302 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user account in the Chronos AI application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        },
+        "preferences": {
+          "type": "string",
+          "description": "User preferences stored as a string."
+        },
+        "summary": {
+          "type": "string",
+          "description": "String containing the user's summary"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "createdAt"
+      ]
+    },
+    "Task": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task",
+      "type": "object",
+      "description": "Represents a task or to-do item in the Chronos AI application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the task entity."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Reference to the User who owns this task. (Relationship: User 1:N Task)"
+        },
+        "teamId": {
+          "type": "string",
+          "description": "Optional reference to the Team/Project this task belongs to. (Relationship: Team 1:N Task)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title or name of the task."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the task."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the task (todo, in_progress, done)."
+        },
+        "completedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the task was completed, or null if not completed.",
+          "format": "date-time"
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "The date and time when the task is due.",
+          "format": "date-time"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The date and time when the task starts.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the task was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the task was last updated.",
+          "format": "date-time"
+        },
+        "priority": {
+          "type": "string",
+          "description": "The priority of the task (low, medium, high, critical)."
+        },
+        "estimatedDuration": {
+          "type": "number",
+          "description": "Estimated duration of the task in minutes."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags or categories associated with the task.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assignedTo": {
+          "type": "array",
+          "description": "References to Users assigned to the task. (Relationship: User N:N Task)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "version": {
+          "type": "number",
+          "description": "The task's version to ensure data integrity"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "title",
+        "status",
+        "dueDate",
+        "createdAt",
+        "updatedAt",
+        "priority",
+        "estimatedDuration"
+      ]
+    },
+    "Note": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Note",
+      "type": "object",
+      "description": "Represents a note or memo in the Chronos AI application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the note entity."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Reference to the User who owns this note. (Relationship: User 1:N Note)"
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Optional reference to the Team/Project this note belongs to. (Relationship: Team 1:N Note)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the note."
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the note (rich text or markdown)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the note was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the note was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "title",
+        "content",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Team": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Team",
+      "type": "object",
+      "description": "Represents a team or project in the Chronos AI application, facilitating collaboration among users.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the team/project entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the team/project."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the team/project."
+        },
+        "members": {
+          "type": "array",
+          "description": "References to Users who are members of this team/project. (Relationship: Team N:N User)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the team/project was created.",
+          "format": "date-time"
+        },
+        "summary": {
+          "type": "string",
+          "description": "String containing the team's summary"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "members",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information and task summaries. Includes denormalized task counts for efficient dashboard rendering.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "tasks/{taskId}",
+        "definition": {
+          "entityName": "Task",
+          "schema": {
+            "$ref": "#/backend/entities/Task"
+          },
+          "description": "Stores task details, including owner, status, due date, priority, and team/project association.  Includes `ownerId` and `teamId` to facilitate authorization without `get()` calls.",
+          "params": [
+            {
+              "name": "taskId",
+              "description": "The unique identifier of the task."
+            }
+          ]
+        }
+      },
+      {
+        "path": "teams/{teamId}",
+        "definition": {
+          "entityName": "Team",
+          "schema": {
+            "$ref": "#/backend/entities/Team"
+          },
+          "description": "Represents a team or project, storing team name, description, and members. Includes 'members' array for authorization independence.",
+          "params": [
+            {
+              "name": "teamId",
+              "description": "The unique identifier of the team."
+            }
+          ]
+        }
+      },
+      {
+        "path": "notes/{noteId}",
+        "definition": {
+          "entityName": "Note",
+          "schema": {
+            "$ref": "#/backend/entities/Note"
+          },
+          "description": "Stores notes, linked to a user (ownerId) or a project (projectId).",
+          "params": [
+            {
+              "name": "noteId",
+              "description": "The unique identifier of the note."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure is designed to support the Chronos AI application's requirements for secure, scalable, and collaborative task management. It prioritizes authorization independence by denormalizing authorization data, enabling atomic operations and simplified security rules. The structure supports secure list operations (QAPs) through structural segregation and the membership map model.\n\n*   **Users:** Stores user profile data and aggregated task summaries. The summary object contains critical information for the dashboard, such as `totalTasks`, `completedToday`, and `overdue`, minimizing expensive aggregation queries.\n*   **Tasks:** Contains individual task details, including owner, status, due date, and team/project association. The `version` field is crucial for conflict resolution and idempotency, ensuring reliable updates in offline/slow network scenarios.  The `ownerId` field enables path-based ownership for private tasks. The `teamId` is used for tasks assigned to teams.\n*   **Teams:** Represents collaborative teams/projects. The `members` array stores user IDs, enabling membership-based authorization for team-related data.\n*   **Notes:** Stores user notes, associated with either a user or a team/project.\n\n**Authorization Independence:**\nAuthorization independence is achieved by the following:\n\n*   Tasks store `ownerId` and `teamId` directly. Security rules can efficiently check task ownership or team membership without requiring `get()` calls to parent documents.\n*   The `members` array in the `Teams` collection is key to authorization. When accessing tasks related to a Team, the existence of the user's ID in the `members` array grants access, again without `get()` calls.\n\n**QAPs (Rules are not Filters):**\nThis structure supports QAPs using:\n\n*   **Structural Segregation:**  User-owned tasks and team-owned tasks are implicitly segregated by the presence or absence of the `teamId` field.  Security rules can efficiently filter based on this, providing secure list operations.\n*   **Membership Map:** The `members` array within the `Teams` collection facilitates secure listing of team-related resources. Security rules can efficiently check membership, allowing only team members to access team-related tasks and notes."
+  }
+}
