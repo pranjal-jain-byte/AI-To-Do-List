@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import type { Team, Task } from '@/lib/types';
+import type { Team, Task, User } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Users, List, Clock, CheckCircle2, UserPlus, LogOut, Copy, Loader2 } from 'lucide-react';
@@ -23,26 +23,32 @@ function MemberList({ memberIds }: { memberIds: string[] }) {
     const firestore = useFirestore();
     const { user: currentUser } = useUser();
 
-    // Although we are fetching multiple users, we can't use a single `useCollection` with a `where('id', 'in', ...)`
-    // query because the number of members might exceed Firestore's limit of 30 disjunctions.
-    // Instead, we fetch each member's document individually using `useDoc`.
+    // Fetch each member's document individually using useDoc.
     const memberDocs = memberIds.map(id => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const userDocRef = useMemoFirebase(() => doc(firestore, 'users', id), [firestore, id]);
+        const userDocRef = useMemoFirebase(() => {
+            if (!id) return null;
+            return doc(firestore, 'users', id);
+        }, [firestore, id]);
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        return useDoc<any>(userDocRef);
+        return useDoc<User>(userDocRef);
     });
 
     const isLoading = memberDocs.some(doc => doc.isLoading);
-    const members = memberDocs.map(doc => doc.data).filter((m): m is any => !!m);
+    const members = memberDocs.map(doc => doc.data).filter((m): m is User => !!m);
 
     if (isLoading) {
         return (
              <div className="space-y-4">
                 {[...Array(memberIds.length || 2)].map((_, i) => (
                     <div key={i} className="flex items-center gap-4">
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        <span className="text-sm text-muted-foreground">Loading member...</span>
+                        <Avatar>
+                           <AvatarFallback><Loader2 className="h-5 w-5 animate-spin" /></AvatarFallback>
+                        </Avatar>
+                        <div className="space-y-2">
+                           <div className="h-4 w-24 rounded-md bg-muted animate-pulse" />
+                           <div className="h-3 w-32 rounded-md bg-muted animate-pulse" />
+                        </div>
                     </div>
                 ))}
             </div>
@@ -207,10 +213,12 @@ export default function TeamDetailsPage() {
                     ))}
                 </ul>
             ): (
-                <div className="text-center py-8 text-muted-foreground">
-                    <List className="h-12 w-12 mx-auto mb-4" />
-                    <p>No tasks assigned to this team yet.</p>
-                </div>
+                !isLoadingTasks && (
+                    <div className="text-center py-8 text-muted-foreground">
+                        <List className="h-12 w-12 mx-auto mb-4" />
+                        <p>No tasks assigned to this team yet.</p>
+                    </div>
+                )
             )}
           </CardContent>
         </Card>
