@@ -2,10 +2,7 @@
 
 import { useState } from 'react';
 import { tasks as initialTasks } from '@/lib/data';
-import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -21,7 +18,7 @@ import {
   PlusCircle,
   Pencil,
   Trash2,
-  CalendarIcon,
+  ChevronDown,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -32,6 +29,14 @@ import {
 import type { Task } from '@/lib/types';
 import { TaskDialog } from '@/components/dashboard/task-dialog';
 import { DeleteTaskAlert } from '@/components/dashboard/delete-task-alert';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { cn } from '@/lib/utils';
 
 const priorityVariant = {
   Low: 'secondary',
@@ -39,12 +44,6 @@ const priorityVariant = {
   High: 'default',
   Critical: 'destructive',
 } as const;
-
-const statusVariant = {
-  todo: 'outline',
-  in_progress: 'secondary',
-  done: 'default',
-};
 
 function TaskToolbar({ onAddTask }: { onAddTask: () => void }) {
   return (
@@ -58,13 +57,95 @@ function TaskToolbar({ onAddTask }: { onAddTask: () => void }) {
   );
 }
 
-export default function TasksPage() {
-  const [tasks, setTasks] = useState(() =>
-    initialTasks.filter((task) => new Date(task.dueDate) >= new Date())
+function TaskTable({
+  tasks,
+  onEdit,
+  onDelete,
+  onToggle,
+}: {
+  tasks: Task[];
+  onEdit: (task: Task) => void;
+  onDelete: (task: Task) => void;
+  onToggle: (task: Task) => void;
+}) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[40px]"></TableHead>
+          <TableHead>Title</TableHead>
+          <TableHead className="w-[120px]">Priority</TableHead>
+          <TableHead className="w-[180px]">Due Date</TableHead>
+          <TableHead className="w-[50px]"></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {tasks.map((task) => (
+          <TableRow
+            key={task.id}
+            className={cn(task.status === 'done' && 'text-muted-foreground')}
+          >
+            <TableCell>
+              <Checkbox
+                checked={task.status === 'done'}
+                onCheckedChange={() => onToggle(task)}
+                aria-label="Mark task as complete"
+              />
+            </TableCell>
+            <TableCell
+              className={cn(
+                'font-semibold',
+                task.status === 'done' && 'line-through'
+              )}
+            >
+              {task.title}
+            </TableCell>
+            <TableCell>
+              <Badge variant={priorityVariant[task.priority] || 'default'}>
+                {task.priority}
+              </Badge>
+            </TableCell>
+            <TableCell>
+              {new Date(task.dueDate).toLocaleDateString()}
+            </TableCell>
+            <TableCell>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-8 w-8 p-0">
+                    <span className="sr-only">Open menu</span>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onEdit(task)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onDelete(task)}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
+}
+
+export default function TasksPage() {
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  const incompleteTasks = tasks.filter((task) => task.status !== 'done');
+  const completedTasks = tasks.filter((task) => task.status === 'done');
 
   const handleAddTask = () => {
     setSelectedTask(null);
@@ -89,7 +170,22 @@ export default function TasksPage() {
     }
   };
 
-  const handleSaveTask = (taskData: Omit<Task, 'id' | 'ownerId' | 'status'> & { id?: string }) => {
+  const handleToggleComplete = (taskToToggle: Task) => {
+    setTasks(
+      tasks.map((task) =>
+        task.id === taskToToggle.id
+          ? {
+              ...task,
+              status: task.status === 'done' ? 'todo' : 'done',
+            }
+          : task
+      )
+    );
+  };
+
+  const handleSaveTask = (
+    taskData: Omit<Task, 'id' | 'ownerId' | 'status'> & { id?: string }
+  ) => {
     if (taskData.id) {
       // Edit existing task
       setTasks(
@@ -118,68 +214,38 @@ export default function TasksPage() {
       <TaskToolbar onAddTask={handleAddTask} />
       <Card>
         <CardContent className="pt-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[120px]">Task ID</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead className="w-[120px]">Status</TableHead>
-                <TableHead className="w-[120px]">Priority</TableHead>
-                <TableHead className="w-[180px]">Due Date</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tasks.map((task) => (
-                <TableRow key={task.id}>
-                  <TableCell className="font-medium text-muted-foreground">
-                    {task.id}
-                  </TableCell>
-                  <TableCell className="font-semibold">{task.title}</TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant[task.status] || 'default'}>
-                      {task.status.replace('_', ' ')}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={priorityVariant[task.priority] || 'default'}
-                    >
-                      {task.priority}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(task.dueDate).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditTask(task)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDeleteTask(task)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <h2 className="text-lg font-semibold mb-2 pl-4">Upcoming</h2>
+          <TaskTable
+            tasks={incompleteTasks}
+            onEdit={handleEditTask}
+            onDelete={handleDeleteTask}
+            onToggle={handleToggleComplete}
+          />
         </CardContent>
       </Card>
+      {completedTasks.length > 0 && (
+        <Accordion type="single" collapsible>
+          <AccordionItem value="completed">
+            <Card>
+              <AccordionTrigger className="p-6">
+                <h2 className="text-lg font-semibold">
+                  Completed ({completedTasks.length})
+                </h2>
+              </AccordionTrigger>
+              <AccordionContent>
+                <CardContent>
+                  <TaskTable
+                    tasks={completedTasks}
+                    onEdit={handleEditTask}
+                    onDelete={handleDeleteTask}
+                    onToggle={handleToggleComplete}
+                  />
+                </CardContent>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        </Accordion>
+      )}
 
       <TaskDialog
         isOpen={isDialogOpen}
