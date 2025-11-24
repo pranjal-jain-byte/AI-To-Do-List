@@ -45,6 +45,7 @@ const taskSchema = z.object({
   priority: z.enum(['Low', 'Medium', 'High', 'Critical']),
   dueDate: z.date(),
   teamId: z.string().optional(),
+  estimatedDuration: z.coerce.number().min(0, 'Must be a positive number').optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -80,6 +81,7 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
                 priority: task.priority || 'Medium',
                 dueDate: task.dueDate ? new Date(task.dueDate) : new Date(),
                 teamId: task.teamId || 'none',
+                estimatedDuration: task.estimatedDuration || 0,
             });
         } else {
             form.reset({
@@ -88,6 +90,7 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
                 priority: 'Medium',
                 dueDate: new Date(),
                 teamId: 'none',
+                estimatedDuration: 30,
             });
         }
     }
@@ -96,6 +99,7 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
   const onSubmit = (data: TaskFormValues) => {
     const dataToSave = {
         ...data,
+        estimatedDuration: data.estimatedDuration || 30,
         dueDate: data.dueDate.toISOString(),
         id: task?.id,
         teamId: data.teamId === 'none' ? undefined : data.teamId,
@@ -226,6 +230,19 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
                 )}
                 />
             </div>
+            <FormField
+              control={form.control}
+              name="estimatedDuration"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Estimated Duration (minutes)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="e.g. 30" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
