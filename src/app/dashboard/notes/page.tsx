@@ -21,9 +21,9 @@ export default function NotesPage() {
     const firestore = useFirestore();
 
     const notesQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user?.uid) return null;
         return query(collection(firestore, 'notes'), where('ownerId', '==', user.uid));
-    }, [firestore, user]);
+    }, [firestore, user?.uid]);
 
     const { data: notes, isLoading: isLoadingNotes } = useCollection<Note>(notesQuery);
 
