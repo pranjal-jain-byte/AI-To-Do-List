@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import { useCollection, useMemoFirebase, useUser, useFirestore } from '@/firebase';
 import type { Note, Task } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,13 +13,16 @@ import { extractTasksFromNotes } from '@/ai/flows/extract-tasks-from-notes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser } from '@/firebase';
-import { collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, serverTimestamp, addDoc } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { NoteDialog } from '@/components/dashboard/note-dialog';
 
 export default function NotesPage() {
     const { user } = useUser();
     const firestore = useFirestore();
+
+    const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
+    const [noteToEdit, setNoteToEdit] = useState<Note | null>(null);
 
     const notesQuery = useMemoFirebase(() => {
         if (!user?.uid) return null;
@@ -116,12 +119,37 @@ export default function NotesPage() {
         setIsTasksDialogOpen(false);
     };
 
+    const handleNewNote = () => {
+        setNoteToEdit(null);
+        setIsNoteDialogOpen(true);
+    };
+
+    const handleSaveNote = async (noteData: Omit<Note, 'id' | 'ownerId' | 'createdAt'> & { id?: string }) => {
+        if (!user) return;
+
+        // For now, we only support creating new notes.
+        const newNote = {
+            ...noteData,
+            ownerId: user.uid,
+            createdAt: new Date().toISOString(),
+        };
+
+        await addDoc(collection(firestore, 'notes'), newNote);
+
+        toast({
+            title: "Note created!",
+            description: `"${noteData.title}" has been saved.`,
+        });
+
+        setIsNoteDialogOpen(false);
+        setNoteToEdit(null);
+    };
 
     return (
         <div className="h-[calc(100vh-10rem)]">
              <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold font-headline">Notes</h1>
-                <Button>
+                <Button onClick={handleNewNote}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     New Note
                 </Button>
@@ -199,6 +227,14 @@ export default function NotesPage() {
                     )}
                 </Card>
             </div>
+            
+            <NoteDialog
+                isOpen={isNoteDialogOpen}
+                onClose={() => setIsNoteDialogOpen(false)}
+                onSave={handleSaveNote}
+                note={noteToEdit}
+            />
+
             <Dialog open={isSummaryDialogOpen} onOpenChange={setIsSummaryDialogOpen}>
                 <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
@@ -217,8 +253,8 @@ export default function NotesPage() {
                                 <Alert>
                                     <BrainCircuit className="h-4 w-4" />
                                     <AlertTitle>Summary</AlertTitle>
-                                    <AlertDescription>
-                                        {summary}
+                                    <AlertDescription className="prose dark:prose-invert max-w-none">
+                                        <div dangerouslySetInnerHTML={{ __html: summary.replace(/\n/g, '<br />') }} />
                                     </AlertDescription>
                                 </Alert>
                             )
@@ -226,6 +262,7 @@ export default function NotesPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
             <Dialog open={isTasksDialogOpen} onOpenChange={setIsTasksDialogOpen}>
                 <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
@@ -274,5 +311,3 @@ export default function NotesPage() {
         </div>
     );
 }
-
-    

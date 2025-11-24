@@ -18,7 +18,7 @@ const SummarizeNotesInputSchema = z.object({
 export type SummarizeNotesInput = z.infer<typeof SummarizeNotesInputSchema>;
 
 const SummarizeNotesOutputSchema = z.object({
-  summary: z.string().describe('The summarized content of the note.'),
+  summary: z.string().describe('The summarized content of the note, formatted as markdown bullet points.'),
 });
 
 export type SummarizeNotesOutput = z.infer<typeof SummarizeNotesOutputSchema>;
@@ -31,7 +31,10 @@ const summarizeNotesPrompt = ai.definePrompt({
   name: 'summarizeNotesPrompt',
   input: {schema: SummarizeNotesInputSchema},
   output: {schema: SummarizeNotesOutputSchema},
-  prompt: `Summarize the following note content in a concise manner:\n\n{{{noteContent}}}`, // Corrected the Handlebars syntax here
+  prompt: `Summarize the following note content into concise bullet points. Format the output as a markdown list.
+
+Note Content:
+{{{noteContent}}}`,
 });
 
 const summarizeNotesFlow = ai.defineFlow(
