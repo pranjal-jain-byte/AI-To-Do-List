@@ -58,7 +58,6 @@ export function AskAiDialog({ isOpen, onClose, onSubmit }: AskAiDialogProps) {
       };
 
       recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
         let description = `Could not recognize speech: ${event.error}`;
         if (event.error === 'network') {
           description = 'Network error during speech recognition. Please check your internet connection and try again.';
@@ -97,9 +96,14 @@ export function AskAiDialog({ isOpen, onClose, onSubmit }: AskAiDialogProps) {
     if (isListening) {
       recognitionRef.current?.stop();
     } else {
-      recognitionRef.current?.start();
+      try {
+        recognitionRef.current?.start();
+        setIsListening(true);
+      } catch (error) {
+         console.error("Error starting speech recognition:", error);
+         setIsListening(false);
+      }
     }
-    setIsListening(!isListening);
   };
 
 
