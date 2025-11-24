@@ -27,7 +27,17 @@ function TodaysPlan({ tasks, isLoading }: { tasks: Task[], isLoading: boolean })
 
         setIsReplanning(true);
         try {
-            const result = await suggestTaskOrder({ tasks: tasksToReplan });
+             // Convert Firestore Timestamps to strings before sending to the server action
+            const serializableTasks = tasksToReplan.map(task => ({
+                ...task,
+                // Check if it's a Timestamp object and convert, otherwise assume it's a string/date
+                dueDate: task.dueDate,
+                createdAt: (task.createdAt as any)?.toDate ? (task.createdAt as any).toDate().toISOString() : task.createdAt,
+                updatedAt: (task.updatedAt as any)?.toDate ? (task.updatedAt as any).toDate().toISOString() : task.updatedAt,
+                completedAt: (task.completedAt as any)?.toDate ? (task.completedAt as any).toDate().toISOString() : task.completedAt,
+            }));
+
+            const result = await suggestTaskOrder({ tasks: serializableTasks });
             const reorderedTasks = result.orderedTasks.map(taskId => 
                 tasksToReplan.find(t => t.id === taskId)
             ).filter((t): t is Task => !!t);
@@ -352,3 +362,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
