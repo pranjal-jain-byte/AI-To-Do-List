@@ -35,6 +35,7 @@ export const tasks: Task[] = [
     {
       id: "TASK-8782",
       title: "Develop AI-powered task prioritization feature",
+      description: "Integrate a machine learning model to automatically rank tasks based on priority, due date, and user-defined parameters.",
       status: "in_progress",
       priority: "High",
       dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
@@ -47,6 +48,7 @@ export const tasks: Task[] = [
     {
       id: "TASK-7878",
       title: "Design new user onboarding flow",
+      description: "Create a more intuitive and engaging onboarding experience for new users.",
       status: "todo",
       priority: "Medium",
       dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -59,6 +61,7 @@ export const tasks: Task[] = [
     {
       id: "TASK-4587",
       title: "Fix bug in note synchronization",
+      description: "Notes are not syncing correctly between devices for some users.",
       status: "done",
       priority: "Critical",
       dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
@@ -71,6 +74,7 @@ export const tasks: Task[] = [
     {
       id: "TASK-3210",
       title: "Create marketing copy for Q3 campaign",
+      description: "Draft compelling copy for all marketing materials, including emails, social media, and ads.",
       status: "in_progress",
       priority: "Medium",
       dueDate: new Date().toISOString(),
@@ -83,6 +87,7 @@ export const tasks: Task[] = [
     {
         id: "TASK-9845",
         title: "Write documentation for the new API",
+        description: "Provide comprehensive documentation for all API endpoints, including examples.",
         status: "todo",
         priority: "Low",
         dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
@@ -93,6 +98,7 @@ export const tasks: Task[] = [
     {
         id: "TASK-6543",
         title: "Plan personal study schedule for Next.js",
+        description: "Allocate time to go through the official Next.js tutorials and build a small project.",
         status: "todo",
         priority: "Medium",
         dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
