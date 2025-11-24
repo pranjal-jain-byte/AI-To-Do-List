@@ -59,10 +59,17 @@ export function AskAiDialog({ isOpen, onClose, onSubmit }: AskAiDialogProps) {
 
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
+        let description = `Could not recognize speech: ${event.error}`;
+        if (event.error === 'network') {
+          description = 'Network error during speech recognition. Please check your internet connection and try again.';
+        } else if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          description = 'Microphone access was denied. Please allow microphone access in your browser settings.';
+        }
+        
         toast({
             variant: "destructive",
             title: "Voice Error",
-            description: `Could not recognize speech: ${event.error}`
+            description: description,
         });
         setIsListening(false);
       };
