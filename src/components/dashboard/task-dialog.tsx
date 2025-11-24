@@ -101,13 +101,16 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
         ...data,
         estimatedDuration: data.estimatedDuration || 30,
         dueDate: data.dueDate.toISOString(),
-        id: task?.id,
     };
 
-    if (data.teamId && data.teamId !== 'none') {
-        dataToSave.teamId = data.teamId;
-    } else {
+    if (task?.id) {
+        dataToSave.id = task.id;
+    }
+
+    if (!data.teamId || data.teamId === 'none') {
         delete dataToSave.teamId;
+    } else {
+        dataToSave.teamId = data.teamId;
     }
 
     onSave(dataToSave);
