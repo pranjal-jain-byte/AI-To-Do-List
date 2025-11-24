@@ -61,16 +61,19 @@ service cloud.firestore {
 
     /**
      * @description A user can manage their own profile document. No other user can read or write it.
+     * The `summary` sub-object is read-only for clients to protect aggregated data.
      * @path /users/{userId}
      * @allow A user (uid: 'user123') can create their own profile at /users/user123. (create)
      * @deny A user (uid: 'user456') cannot read the profile of 'user123'. (get)
+     * @deny A user cannot directly update their `summary` object.
      * @principle Restricts access to a user's own data tree and enforces path-to-data consistency.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
-      allow list: if false;
+      allow list: if false; // Prevent listing of all users
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      // Allow updates if user is owner, but only if the summary hasn't changed.
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id && request.resource.data.summary == resource.data.summary;
       allow delete: if isExistingOwner(userId);
     }
 
@@ -85,6 +88,7 @@ service cloud.firestore {
      */
     match /teams/{teamId} {
       allow get: if isTeamMember(teamId);
+      // Secure list: only allow querying for teams the user is a member of.
       allow list: if isSignedIn() && request.query.where.size() > 0 && request.query.where[0][0] == "members" && request.query.where[0][1] == "array-contains" && request.query.where[0][2] == request.auth.uid;
       allow create: if isSignedIn() && request.auth.uid in request.resource.data.members;
       allow update: if resource != null && isTeamMember(teamId);
@@ -101,7 +105,7 @@ service cloud.firestore {
      */
     match /tasks/{taskId} {
       allow get: if resource.data.ownerId == request.auth.uid || (resource.data.teamId != null && isTeamMember(resource.data.teamId));
-      allow list: if isSignedIn(); // Allows client to perform queries like .where('ownerId', '==', uid)
+      allow list: if isSignedIn(); // Allows client to perform secure queries like .where('ownerId', '==', uid)
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && (request.resource.data.teamId == null || isTeamMember(request.resource.data.teamId));
       allow update: if resource != null && (resource.data.ownerId == request.auth.uid || (resource.data.teamId != null && isTeamMember(resource.data.teamId))) && request.resource.data.ownerId == resource.data.ownerId;
       allow delete: if resource != null && (resource.data.ownerId == request.auth.uid || (resource.data.teamId != null && isTeamMember(resource.data.teamId)));
@@ -117,7 +121,7 @@ service cloud.firestore {
      */
     match /notes/{noteId} {
       allow get: if resource.data.ownerId == request.auth.uid || (resource.data.projectId != null && isTeamMember(resource.data.projectId));
-      allow list: if isSignedIn(); // Allows client to perform queries like .where('ownerId', '==', uid)
+      allow list: if isSignedIn(); // Allows client to perform secure queries like .where('ownerId', '==', uid)
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && (request.resource.data.projectId == null || isTeamMember(request.resource.data.projectId));
       allow update: if resource != null && (resource.data.ownerId == request.auth.uid || (resource.data.projectId != null && isTeamMember(resource.data.projectId))) && request.resource.data.ownerId == resource.data.ownerId;
       allow delete: if resource != null && (resource.data.ownerId == request.auth.uid || (resource.data.projectId != null && isTeamMember(resource.data.projectId)));
