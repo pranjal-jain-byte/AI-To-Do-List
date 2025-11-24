@@ -51,7 +51,7 @@ function AuthForm() {
                 }
             }, { merge: true });
 
-            setUser({ uid: user.uid, displayName: name, email: user.email });
+            setUser(user);
             router.push('/dashboard');
             toast({
                 title: `Welcome, ${name}!`,
@@ -77,7 +77,8 @@ function AuthForm() {
         const password = (form.elements.namedItem('password') as HTMLInputElement).value;
 
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            setUser(userCredential.user);
             router.push('/dashboard');
             toast({
                 title: 'Welcome back!',

@@ -15,9 +15,9 @@ export interface FirebaseContextState {
   firestore: Firestore | null;
   auth: Auth | null; // The Auth service instance
   // User authentication state
-  user: User | null;
+  user: LocalUser | null;
   isUserLoading: boolean; 
-  setUser: (user: User | null) => void;
+  setUser: (user: LocalUser | null) => void;
 }
 
 // Return type for useFirebase()
@@ -25,16 +25,16 @@ export interface FirebaseServicesAndUser {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
-  user: User | null;
+  user: LocalUser | null;
   isUserLoading: boolean;
-  setUser: (user: User | null) => void;
+  setUser: (user: LocalUser | null) => void;
 }
 
 // Return type for useUser() - specific to user auth state
 export interface UserHookResult {
-  user: User | null;
+  user: LocalUser | null;
   isUserLoading: boolean;
-  setUser: (user: User | null) => void;
+  setUser: (user: LocalUser | null) => void;
 }
 
 // React Context
@@ -56,7 +56,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   firestore,
   auth,
 }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<LocalUser | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
 
    useEffect(() => {
