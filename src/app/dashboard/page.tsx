@@ -17,34 +17,23 @@ import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebas
 import { collection, query, where, doc, serverTimestamp, addDoc, updateDoc } from 'firebase/firestore';
 
 function TodaysPlan({ tasks, isLoading }: { tasks: Task[], isLoading: boolean }) {
-    const [todaysTasks, setTodaysTasks] = useState<Task[]>([]);
+    const [orderedTasks, setOrderedTasks] = useState<Task[]>([]);
     const [isReplanning, setIsReplanning] = useState(false);
     const { toast } = useToast();
     
     useEffect(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const filteredTasks = tasks
-            .filter(task => {
-                const dueDate = new Date(task.dueDate);
-                return task.status !== 'done' && dueDate >= today && dueDate < tomorrow;
-            })
-            .slice(0, 5);
-        setTodaysTasks(filteredTasks);
+        setOrderedTasks(tasks);
     }, [tasks]);
 
     const handleReplan = async () => {
-        if (!todaysTasks || todaysTasks.length === 0) return;
+        if (!orderedTasks || orderedTasks.length === 0) return;
         setIsReplanning(true);
         try {
-            const result = await suggestTaskOrder({ tasks: todaysTasks });
-            const orderedTasks = result.orderedTasks.map(taskId => 
-                todaysTasks.find(t => t.id === taskId)
+            const result = await suggestTaskOrder({ tasks: orderedTasks });
+            const reorderedTasks = result.orderedTasks.map(taskId => 
+                orderedTasks.find(t => t.id === taskId)
             ).filter((t): t is Task => !!t);
-            setTodaysTasks(orderedTasks);
+            setOrderedTasks(reorderedTasks);
             toast({
                 title: "Your day has been re-planned!",
                 description: result.reasoning,
@@ -69,7 +58,7 @@ function TodaysPlan({ tasks, isLoading }: { tasks: Task[], isLoading: boolean })
                     <span>Today's Plan (AI Ordered)</span>
                 </CardTitle>
                 <CardDescription>Your AI-optimized schedule for today.
-                <Button size="sm" variant="outline" className="ml-4" onClick={handleReplan} disabled={isReplanning || isLoading}>
+                <Button size="sm" variant="outline" className="ml-4" onClick={handleReplan} disabled={isReplanning || isLoading || tasks.length === 0}>
                     {isReplanning ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null }
@@ -84,9 +73,9 @@ function TodaysPlan({ tasks, isLoading }: { tasks: Task[], isLoading: boolean })
                         <p className="ml-2 text-muted-foreground">Loading today's plan...</p>
                     </div>
                 )}
-                {!isLoading && todaysTasks && todaysTasks.length > 0 ? (
+                {!isLoading && orderedTasks && orderedTasks.length > 0 ? (
                 <ul className="space-y-4">
-                    {todaysTasks.map((task, index) => (
+                    {orderedTasks.map((task, index) => (
                         <li key={task.id} className="flex items-start gap-4">
                              <div className="flex flex-col items-center">
                                 <span className="text-sm font-bold text-primary">
@@ -209,6 +198,22 @@ export default function DashboardPage() {
     };
   }, [tasks]);
 
+  const todaysTasks = useMemo(() => {
+    if (!tasks) return [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    return tasks
+        .filter(task => {
+            const dueDate = new Date(task.dueDate);
+            return task.status !== 'done' && dueDate >= today && dueDate < tomorrow;
+        })
+        .slice(0, 5);
+  }, [tasks]);
+
+
   const handleSaveTask = async (taskData: Omit<Task, 'id' | 'ownerId' | 'status' | 'version' | 'createdAt' | 'updatedAt' | 'completedAt'> & { id?: string }) => {
     if (!user) return;
 
@@ -314,7 +319,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-          <TodaysPlan tasks={tasks || []} isLoading={isLoadingTasks} />
+          <TodaysPlan tasks={todaysTasks} isLoading={isLoadingTasks} />
           <Card className="col-span-1 lg:col-span-1">
               <CardHeader>
                   <CardTitle>Quick Access</CardTitle>
