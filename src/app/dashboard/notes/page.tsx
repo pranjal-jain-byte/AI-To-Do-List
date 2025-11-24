@@ -5,12 +5,44 @@ import { notes } from '@/lib/data';
 import type { Note } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, PlusCircle, BrainCircuit, ListTodo } from 'lucide-react';
+import { FileText, PlusCircle, BrainCircuit, ListTodo, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { summarizeNotes } from '@/ai/flows/summarize-notes';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 
 export default function NotesPage() {
     const [selectedNote, setSelectedNote] = useState<Note | null>(notes[0] || null);
+    const [isSummarizing, setIsSummarizing] = useState(false);
+    const [summary, setSummary] = useState<string | null>(null);
+    const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
+    const { toast } = useToast();
+
+    const handleSummarize = async () => {
+        if (!selectedNote) return;
+
+        setIsSummarizing(true);
+        setSummary(null);
+        setIsSummaryDialogOpen(true);
+
+        try {
+            const result = await summarizeNotes({ noteContent: selectedNote.content });
+            setSummary(result.summary);
+        } catch (error) {
+            console.error("Failed to summarize note:", error);
+            toast({
+                variant: "destructive",
+                title: "Uh oh! Something went wrong.",
+                description: "Could not get summary from AI.",
+            });
+            setIsSummaryDialogOpen(false);
+        } finally {
+            setIsSummarizing(false);
+        }
+    };
+
 
     return (
         <div className="h-[calc(100vh-10rem)]">
@@ -66,8 +98,12 @@ export default function NotesPage() {
                                 </ScrollArea>
                             </CardContent>
                             <CardFooter className="gap-2">
-                                <Button variant="outline">
-                                    <BrainCircuit className="mr-2 h-4 w-4" />
+                                <Button variant="outline" onClick={handleSummarize} disabled={isSummarizing}>
+                                    {isSummarizing ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <BrainCircuit className="mr-2 h-4 w-4" />
+                                    )}
                                     Summarize with AI
                                 </Button>
                                 <Button variant="outline">
@@ -85,6 +121,33 @@ export default function NotesPage() {
                     )}
                 </Card>
             </div>
+            <Dialog open={isSummaryDialogOpen} onOpenChange={setIsSummaryDialogOpen}>
+                <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle>AI Summary</DialogTitle>
+                        <DialogDescription>
+                            Here is the AI-generated summary of your note: "{selectedNote?.title}".
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        {isSummarizing ? (
+                            <div className="flex items-center justify-center p-8">
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : (
+                             summary && (
+                                <Alert>
+                                    <BrainCircuit className="h-4 w-4" />
+                                    <AlertTitle>Summary</AlertTitle>
+                                    <AlertDescription>
+                                        {summary}
+                                    </AlertDescription>
+                                </Alert>
+                            )
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
