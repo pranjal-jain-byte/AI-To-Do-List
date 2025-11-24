@@ -21,7 +21,7 @@ export default function AppSidebar() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => pathname.startsWith(path) && (path.length === pathname.length || pathname[path.length] === '/');
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -62,7 +62,7 @@ export default function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <Link href="/dashboard" className="w-full">
-              <SidebarMenuButton isActive={isActive('/dashboard')} icon={<Home />}>
+              <SidebarMenuButton isActive={pathname === '/dashboard'} icon={<Home />}>
                 Dashboard
               </SidebarMenuButton>
             </Link>
@@ -91,6 +91,15 @@ export default function AppSidebar() {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
+         <SidebarMenu>
+          <SidebarMenuItem>
+             <Link href="/dashboard/settings" className="w-full">
+              <SidebarMenuButton isActive={isActive('/dashboard/settings')} icon={<Settings />}>
+                Settings
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <div className="flex items-center gap-3 p-2 rounded-lg bg-sidebar-accent">
             <Avatar className="h-9 w-9">
               <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ''} />
