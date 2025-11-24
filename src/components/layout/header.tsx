@@ -14,8 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TaskDialog } from '../dashboard/task-dialog';
 import type { Task } from '@/lib/types';
 import { useFirestore, useUser } from '@/firebase';
-import { addDoc, collection, doc, serverTimestamp } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 
 
 function Breadcrumbs() {
@@ -83,18 +82,24 @@ export default function Header() {
     }
   };
 
-  const handleSaveTask = (taskData: Omit<Task, 'id' | 'ownerId' | 'status' | 'version' | 'createdAt' | 'updatedAt' | 'completedAt'> & { id?: string }) => {
+  const handleSaveTask = async (taskData: Omit<Task, 'id' | 'ownerId' | 'status' | 'version' | 'createdAt' | 'updatedAt' | 'completedAt'> & { id?: string }) => {
     if (!user) return;
 
     if (taskData.id) {
         const taskRef = doc(firestore, 'tasks', taskData.id);
-        setDocumentNonBlocking(taskRef, {
+        // Ensure you have the complete existing task data to preserve fields not in the form
+        await updateDoc(taskRef, {
             ...taskData,
             updatedAt: serverTimestamp(),
-        }, { merge: true });
+        });
     } else {
         const taskToSave: Omit<Task, 'id'> = {
-            ...taskData,
+            title: taskData.title,
+            description: taskData.description || '',
+            priority: taskData.priority,
+            dueDate: taskData.dueDate,
+            teamId: taskData.teamId,
+            estimatedDuration: taskData.estimatedDuration || 30,
             ownerId: user.uid,
             status: 'todo',
             version: 1,
@@ -102,9 +107,8 @@ export default function Header() {
             updatedAt: serverTimestamp(),
             completedAt: null,
             tags: [],
-            description: taskData.description || '',
         };
-        addDoc(collection(firestore, 'tasks'), taskToSave);
+        await addDoc(collection(firestore, 'tasks'), taskToSave);
     }
     
     toast({
