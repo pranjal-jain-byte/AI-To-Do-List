@@ -18,6 +18,7 @@ import {
   PlusCircle,
   Pencil,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -69,6 +70,10 @@ function TaskTable({
   onDelete: (task: Task) => void;
   onToggle: (task: Task) => void;
 }) {
+  if (!tasks || tasks.length === 0) {
+    return <p className="text-center text-muted-foreground p-8">No tasks here!</p>;
+  }
+
   return (
     <Table>
       <TableHeader>
@@ -227,7 +232,11 @@ export default function TasksPage() {
   return (
     <div className="space-y-6">
       <TaskToolbar onAddTask={handleAddTask} />
-       {isLoading && <p>Loading tasks...</p>}
+       {isLoading && (
+        <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+       )}
        {!isLoading && (
         <>
             <Card>
