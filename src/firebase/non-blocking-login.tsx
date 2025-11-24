@@ -15,10 +15,10 @@ export function initiateAnonymousSignIn(authInstance: Auth): void {
 }
 
 /** Initiate email/password sign-up (non-blocking). */
-export function initiateEmailSignUp(authInstance: Auth, email: string, password: string): void {
-  // CRITICAL: Call createUserWithEmailAndPassword directly. Do NOT use 'await createUserWithEmailAndPassword(...)'.
-  createUserWithEmailAndPassword(authInstance, email, password);
-  // Code continues immediately. Auth state change is handled by onAuthStateChanged listener.
+export function initiateEmailSignUp(authInstance: Auth, email: string, password: string) {
+  // Although the function name suggests non-blocking, we need to return the promise
+  // to handle specific errors like 'auth/email-already-in-use' on the client.
+  return createUserWithEmailAndPassword(authInstance, email, password);
 }
 
 /** Initiate email/password sign-in (non-blocking). */

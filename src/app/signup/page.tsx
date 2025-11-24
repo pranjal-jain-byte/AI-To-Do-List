@@ -13,6 +13,7 @@ import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { FirebaseError } from 'firebase/app';
 
 function SignupPageContent() {
     const router = useRouter();
@@ -20,15 +21,17 @@ function SignupPageContent() {
     const firestore = useFirestore();
     const { toast } = useToast();
 
-    const handleSignup = (event: React.FormEvent) => {
+    const handleSignup = async (event: React.FormEvent) => {
         event.preventDefault();
         const form = event.currentTarget as HTMLFormElement;
         const name = (form.elements.namedItem('name') as HTMLInputElement).value;
         const email = (form.elements.namedItem('email') as HTMLInputElement).value;
         const password = (form.elements.namedItem('password') as HTMLInputElement).value;
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
+        try {
+            const userCredential = await initiateEmailSignUp(auth, email, password);
+            if (userCredential && userCredential.user) {
+                const user = userCredential.user;
                 const userRef = doc(firestore, 'users', user.uid);
                 setDocumentNonBlocking(userRef, {
                     id: user.uid,
@@ -42,12 +45,33 @@ function SignupPageContent() {
                         lastUpdated: serverTimestamp()
                     }
                 }, { merge: true });
-
                 router.push('/dashboard');
             }
-        });
-
-        initiateEmailSignUp(auth, email, password);
+        } catch (error) {
+            if (error instanceof FirebaseError && error.code === 'auth/email-already-in-use') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Email already exists',
+                    description: (
+                        <p>
+                            An account with this email already exists. Please{' '}
+                            <Link href="/login" className="font-bold underline">
+                                Log In
+                            </Link>
+                            .
+                        </p>
+                    ),
+                });
+            } else {
+                console.error("Signup failed", error);
+                toast({
+                    variant: "destructive",
+                    title: "Uh oh! Something went wrong.",
+                    description: "Could not create your account.",
+                });
+            }
+            return;
+        }
 
         toast({
             title: 'Creating account...',
