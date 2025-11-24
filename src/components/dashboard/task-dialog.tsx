@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -36,7 +36,8 @@ import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { Task, Team } from '@/lib/types';
-import { teams } from '@/lib/data';
+import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -51,40 +52,43 @@ type TaskFormValues = z.infer<typeof taskSchema>;
 interface TaskDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: Omit<Task, 'id'|'ownerId'|'status'> & {id?: string}) => void;
-  task: Task | null;
+  onSave: (data: Omit<Task, 'id'|'ownerId'|'status'|'version'|'createdAt'|'updatedAt'|'completedAt'> & {id?: string}) => void;
+  task: Partial<Task> | null;
 }
 
 export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const teamsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'teams'), where('members', 'array-contains', user.uid));
+  }, [firestore, user]);
+
+  const { data: teams } = useCollection<Team>(teamsQuery);
+  
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
-    defaultValues: {
-      title: '',
-      description: '',
-      priority: 'Medium',
-      dueDate: new Date(),
-      teamId: 'none',
-    },
   });
 
   useEffect(() => {
     if (isOpen) {
         if (task) {
-        form.reset({
-            title: task.title,
-            description: task.description,
-            priority: task.priority,
-            dueDate: new Date(task.dueDate),
-            teamId: task.teamId || 'none',
-        });
+            form.reset({
+                title: task.title || '',
+                description: task.description || '',
+                priority: task.priority || 'Medium',
+                dueDate: task.dueDate ? new Date(task.dueDate) : new Date(),
+                teamId: task.teamId || 'none',
+            });
         } else {
-        form.reset({
-            title: '',
-            description: '',
-            priority: 'Medium',
-            dueDate: new Date(),
-            teamId: 'none',
-        });
+            form.reset({
+                title: '',
+                description: '',
+                priority: 'Medium',
+                dueDate: new Date(),
+                teamId: 'none',
+            });
         }
     }
   }, [task, form, isOpen]);
@@ -103,9 +107,9 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{task ? 'Edit Task' : 'Add Task'}</DialogTitle>
+          <DialogTitle>{task?.id ? 'Edit Task' : 'Add Task'}</DialogTitle>
           <DialogDescription>
-            {task ? 'Update the details of your task.' : 'Fill in the details for your new task.'}
+            {task?.id ? 'Update the details of your task.' : 'Fill in the details for your new task.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -142,7 +146,7 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Team (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || 'none'}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Assign to a team" />
@@ -150,7 +154,7 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="none">No Team</SelectItem>
-                      {teams.map((team: Team) => (
+                      {teams && teams.map((team: Team) => (
                         <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -166,7 +170,7 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                         <SelectTrigger>
                             <SelectValue placeholder="Select a priority" />
@@ -213,9 +217,6 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                            }
                             initialFocus
                         />
                         </PopoverContent>

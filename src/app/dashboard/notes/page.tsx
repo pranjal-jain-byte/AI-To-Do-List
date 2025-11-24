@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { notes } from '@/lib/data';
+import { useCollection, useMemoFirebase } from '@/firebase';
 import type { Note } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,21 @@ import { extractTasksFromNotes } from '@/ai/flows/extract-tasks-from-notes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestore, useUser } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 export default function NotesPage() {
-    const [selectedNote, setSelectedNote] = useState<Note | null>(notes[0] || null);
+    const { user } = useUser();
+    const firestore = useFirestore();
+
+    const notesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'notes'), where('ownerId', '==', user.uid));
+    }, [firestore, user]);
+
+    const { data: notes, isLoading: isLoadingNotes } = useCollection<Note>(notesQuery);
+
+    const [selectedNote, setSelectedNote] = useState<Note | null>(null);
     const [isSummarizing, setIsSummarizing] = useState(false);
     const [summary, setSummary] = useState<string | null>(null);
     const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
@@ -88,7 +100,8 @@ export default function NotesPage() {
                     <CardContent className="p-0 flex-grow">
                         <ScrollArea className="h-full">
                             <div className="p-6 pt-0">
-                            {notes.map((note) => (
+                            {isLoadingNotes && <p>Loading notes...</p>}
+                            {notes && notes.map((note) => (
                                 <button
                                     key={note.id}
                                     onClick={() => setSelectedNote(note)}

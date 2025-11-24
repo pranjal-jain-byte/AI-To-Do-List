@@ -1,16 +1,17 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { teams as initialTeams, tasks as initialTasks, getAuthenticatedUser } from '@/lib/data';
-import type { Team, Task } from '@/lib/types';
+import type { Team, Task, User } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Users, List, Clock, CheckCircle2, UserPlus, Link as LinkIcon, LogOut, Copy } from 'lucide-react';
+import { ArrowLeft, Users, List, Clock, CheckCircle2, UserPlus, LogOut, Copy } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
+import { useDoc, useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where, updateDoc, arrayRemove } from 'firebase/firestore';
 
 const priorityVariant = {
   Low: 'secondary',
@@ -24,18 +25,31 @@ export default function TeamDetailsPage() {
   const params = useParams();
   const teamId = params.teamId as string;
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
 
-  const [team, setTeam] = useState<Team | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const teamDocRef = useMemoFirebase(() => doc(firestore, 'teams', teamId), [firestore, teamId]);
+  const { data: team, isLoading: isLoadingTeam } = useDoc<Team>(teamDocRef);
+
+  const tasksQuery = useMemoFirebase(() => query(collection(firestore, 'tasks'), where('teamId', '==', teamId)), [firestore, teamId]);
+  const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
   
+  const [members, setMembers] = useState<User[]>([]);
+
   useEffect(() => {
-    const foundTeam = initialTeams.find((t) => t.id === teamId);
-    if (foundTeam) {
-      setTeam(foundTeam);
-      const teamTasks = initialTasks.filter((task) => task.teamId === teamId);
-      setTasks(teamTasks);
+    if (team?.members) {
+      const memberPromises = team.members.map(memberId => getDoc(doc(firestore, 'users', memberId)));
+      Promise.all(memberPromises).then(memberDocs => {
+        const memberData = memberDocs.map(doc => doc.data() as User);
+        setMembers(memberData);
+      });
     }
-  }, [teamId]);
+  }, [team, firestore]);
+
+  const getDoc = async (docRef: any) => {
+    const docSnap = await import('firebase/firestore').then(m => m.getDoc(docRef));
+    return docSnap;
+  }
 
   const handleCopyLink = () => {
     const inviteLink = `${window.location.origin}/teams/${teamId}/join`;
@@ -46,13 +60,25 @@ export default function TeamDetailsPage() {
     });
   };
   
-  const handleLeaveTeam = () => {
-    // In a real app, this would be a backend call.
+  const handleLeaveTeam = async () => {
+    if (!user || !team) return;
+    const teamRef = doc(firestore, 'teams', team.id);
+    await updateDoc(teamRef, {
+        members: arrayRemove(user.uid)
+    });
     toast({
         title: "You have left the team.",
         description: `You are no longer a member of ${team?.name}.`,
     });
     router.push('/dashboard/teams');
+  }
+
+  if (isLoadingTeam) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p>Loading team...</p>
+      </div>
+    );
   }
 
   if (!team) {
@@ -63,8 +89,7 @@ export default function TeamDetailsPage() {
     );
   }
   
-  const user = getAuthenticatedUser();
-  const isMember = team.members.some(m => m.id === user.id);
+  const isMember = team.members.some(memberId => memberId === user?.uid);
 
   return (
     <div className="space-y-6">
@@ -97,14 +122,14 @@ export default function TeamDetailsPage() {
             </CardHeader>
             <CardContent>
                 <ul className="space-y-4">
-                {team.members.map((member) => (
+                {members.map((member) => (
                     <li key={member.id} className="flex items-center gap-4">
                     <Avatar>
                         <AvatarImage src={member.avatarUrl} />
                         <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <p className="font-medium">{member.name} {member.id === user.id && '(You)'}</p>
+                        <p className="font-medium">{member.name} {member.id === user?.uid && '(You)'}</p>
                         <p className="text-sm text-muted-foreground">{member.email}</p>
                     </div>
                     </li>
@@ -141,7 +166,8 @@ export default function TeamDetailsPage() {
             <CardDescription>Tasks assigned to {team.name}</CardDescription>
           </CardHeader>
           <CardContent>
-            {tasks.length > 0 ? (
+            {isLoadingTasks && <p>Loading tasks...</p>}
+            {!isLoadingTasks && tasks && tasks.length > 0 ? (
                 <ul className="space-y-4">
                     {tasks.map((task) => (
                         <li key={task.id} className="flex items-center justify-between p-3 rounded-md bg-muted/50">

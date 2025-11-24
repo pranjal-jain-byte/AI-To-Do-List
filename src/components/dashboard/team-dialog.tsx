@@ -35,7 +35,7 @@ type TeamFormValues = z.infer<typeof teamSchema>;
 interface TeamDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: Omit<Team, 'id' | 'members'>) => void;
+  onSave: (data: Omit<Team, 'id' | 'members' | 'createdAt'>) => void;
 }
 
 export function TeamDialog({ isOpen, onClose, onSave }: TeamDialogProps) {

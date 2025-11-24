@@ -11,27 +11,46 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { getAuthenticatedUser } from '@/lib/data';
+import { useUser } from '@/firebase';
 import Link from 'next/link';
-import { LogOut, User as UserIcon, Settings, CreditCard } from 'lucide-react';
+import { LogOut, User as UserIcon, Settings, CreditCard, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export function UserNav() {
-  const user = getAuthenticatedUser();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  if (isUserLoading) {
+      return <Loader2 className="h-6 w-6 animate-spin" />
+  }
+
+  if (!user) {
+    return (
+        <Button asChild>
+            <Link href="/login">Log In</Link>
+        </Button>
+    )
+  }
+
+  const handleLogout = () => {
+    // In real app, call auth.signOut()
+    router.push('/login');
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={user.avatarUrl} alt={user.name} />
-            <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+            <AvatarImage src={user.photoURL || undefined} alt={user.displayName || ''} />
+            <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name}</p>
+            <p className="text-sm font-medium leading-none">{user.displayName}</p>
             <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
           </div>
         </DropdownMenuLabel>
@@ -51,12 +70,10 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <Link href="/login">
-            <DropdownMenuItem>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-            </DropdownMenuItem>
-        </Link>
+        <DropdownMenuItem onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Log out</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

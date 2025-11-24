@@ -10,15 +10,41 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getAuthenticatedUser } from '@/lib/data';
-import { usePathname } from 'next/navigation';
-import { CheckSquare, Clock, FileText, Home, LogOut, Settings, Users, Zap } from 'lucide-react';
+import { useUser } from '@/firebase';
+import { usePathname, useRouter } from 'next/navigation';
+import { CheckSquare, Clock, FileText, Home, LogOut, Settings, Users, Zap, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const user = getAuthenticatedUser();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
   const isActive = (path: string) => pathname === path;
+
+  const handleLogout = () => {
+    // In a real app, you'd call firebase.auth().signOut()
+    router.push('/login');
+  };
+
+  if (isUserLoading) {
+      return (
+        <Sidebar>
+            <SidebarHeader>
+                <div className="flex items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                    <Clock className="h-6 w-6" />
+                </div>
+                <span className="text-lg font-semibold font-headline text-sidebar-foreground">Chronos AI</span>
+                </div>
+            </SidebarHeader>
+            <SidebarContent>
+                <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin text-sidebar-foreground" />
+                </div>
+            </SidebarContent>
+        </Sidebar>
+      )
+  }
 
   return (
     <Sidebar>
@@ -65,16 +91,16 @@ export default function AppSidebar() {
       <SidebarFooter>
         <div className="flex items-center gap-3 p-2 rounded-lg bg-sidebar-accent">
             <Avatar className="h-9 w-9">
-              <AvatarImage src={user.avatarUrl} alt={user.name} />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ''} />
+              <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-1 overflow-hidden">
-                <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{user.name}</p>
-                <p className="text-xs text-sidebar-foreground/70 truncate">{user.email}</p>
+                <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{user?.displayName}</p>
+                <p className="text-xs text-sidebar-foreground/70 truncate">{user?.email}</p>
             </div>
-            <Link href="/login">
+            <button onClick={handleLogout}>
                 <LogOut className="h-5 w-5 text-sidebar-foreground/70 hover:text-sidebar-accent-foreground" />
-            </Link>
+            </button>
         </div>
       </SidebarFooter>
     </Sidebar>

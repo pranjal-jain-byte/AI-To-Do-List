@@ -1,26 +1,53 @@
 'use client';
 
 import { useState } from 'react';
-import { getAuthenticatedUser, tasks as initialTasks, teams as initialTeams } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { List, CheckCircle2, AlertCircle, Zap, Clock, Users, FileText, CheckSquare, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TaskDialog } from '@/components/dashboard/task-dialog';
 import { TeamDialog } from '@/components/dashboard/team-dialog';
-import type { Task, Team } from '@/lib/types';
+import type { Task, Team, User } from '@/lib/types';
 import { suggestTaskOrder } from '@/ai/flows/suggest-task-order';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { AskAiDialog } from '@/components/dashboard/ask-ai-dialog';
 import { createTaskFromText } from '@/ai/flows/create-task-from-text';
+import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where, doc, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 function TodaysPlan() {
-    const [todaysTasks, setTodaysTasks] = useState(() => initialTasks.filter(t => new Date(t.dueDate).toDateString() === new Date().toDateString()).slice(0, 5));
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const tasksQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(
+            collection(firestore, 'tasks'),
+            where('ownerId', '==', user.uid),
+            where('dueDate', '>=', today.toISOString()),
+            where('dueDate', '<', tomorrow.toISOString())
+        );
+    }, [firestore, user, today, tomorrow]);
+
+    const { data: initialTasks, isLoading } = useCollection<Task>(tasksQuery);
+    const [todaysTasks, setTodaysTasks] = useState<Task[]>([]);
     const [isReplanning, setIsReplanning] = useState(false);
     const { toast } = useToast();
+    
+    useState(() => {
+        if (initialTasks) {
+            setTodaysTasks(initialTasks.slice(0, 5));
+        }
+    });
 
     const handleReplan = async () => {
+        if (!todaysTasks) return;
         setIsReplanning(true);
         try {
             const result = await suggestTaskOrder({ tasks: todaysTasks });
@@ -61,7 +88,8 @@ function TodaysPlan() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                {todaysTasks.length > 0 ? (
+                {isLoading && <p>Loading today's plan...</p>}
+                {!isLoading && todaysTasks.length > 0 ? (
                 <ul className="space-y-4">
                     {todaysTasks.map((task, index) => (
                         <li key={task.id} className="flex items-start gap-4">
@@ -93,7 +121,28 @@ function TodaysPlan() {
 }
 
 function StatsCards() {
-    const overdueTasks = initialTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'done').length;
+    const { user } = useUser();
+    const firestore = useFirestore();
+
+    const userSummaryDoc = useMemoFirebase(() => {
+        if (!user) return null;
+        return doc(firestore, 'users', user.uid);
+    }, [firestore, user]);
+
+    const { data: userSummary, isLoading } = useDoc<User>(userSummaryDoc);
+    
+    if (isLoading || !userSummary) {
+        return (
+            <>
+                <Card><CardContent className="pt-6"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
+                <Card><CardContent className="pt-6"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
+                <Card><CardContent className="pt-6"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
+            </>
+        )
+    }
+
+    const summary = userSummary.summary;
+    const overdueTasks = summary?.overdue || 0;
 
     return (
         <>
@@ -103,7 +152,7 @@ function StatsCards() {
                     <List className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{initialTasks.length}</div>
+                    <div className="text-2xl font-bold">{summary?.totalTasks || 0}</div>
                     <p className="text-xs text-muted-foreground">Across all projects</p>
                 </CardContent>
             </Card>
@@ -114,7 +163,7 @@ function StatsCards() {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">
-                        {initialTasks.filter(t => new Date(t.dueDate).toDateString() === new Date().toDateString() && t.status === 'done').length}
+                        {summary?.completedToday || 0}
                     </div>
                     <p className="text-xs text-muted-foreground">Great progress!</p>
                 </CardContent>
@@ -135,34 +184,62 @@ function StatsCards() {
 
 
 export default function DashboardPage() {
-  const user = getAuthenticatedUser();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const firestore = useFirestore();
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
-  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  const [taskToEdit, setTaskToEdit] = useState<Partial<Task> | null>(null);
   const { toast } = useToast();
 
-  const handleSaveTask = (taskData: Omit<Task, 'id' | 'ownerId' | 'status'> & { id?: string }) => {
-    // In a real app, you would save this to your database
-    console.log('Saving task:', taskData);
+  const handleSaveTask = (taskData: Omit<Task, 'id' | 'ownerId' | 'status' | 'version' | 'createdAt' | 'updatedAt' | 'completedAt'> & { id?: string }) => {
+    if (!user) return;
+
+    const taskToSave: Omit<Task, 'id'> = {
+        ...taskData,
+        ownerId: user.uid,
+        status: 'todo',
+        version: 1,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        completedAt: null,
+        tags: [],
+        description: taskData.description || '',
+    };
+    
+    if (taskData.id) {
+        const taskRef = doc(firestore, 'tasks', taskData.id);
+        setDocumentNonBlocking(taskRef, taskToSave, { merge: true });
+    } else {
+        const tasksCol = collection(firestore, 'tasks');
+        addDoc(tasksCol, taskToSave);
+    }
+    
     toast({
         title: taskData.id ? "Task updated!" : "Task created!",
         description: `"${taskData.title}" has been saved.`,
     });
     setIsTaskDialogOpen(false);
     setTaskToEdit(null);
-    // Here you would typically refetch or update your tasks state
   };
   
   const handleSaveTeam = (teamData: Omit<Team, 'id' | 'members'>) => {
-    console.log('Saving team:', teamData);
+    if(!user) return;
+    
+    const newTeam: Omit<Team, 'id'> = {
+        ...teamData,
+        members: [user.uid],
+        createdAt: serverTimestamp(),
+    };
+    
+    addDoc(collection(firestore, 'teams'), newTeam);
+
      toast({
         title: "Team created!",
         description: `The "${teamData.name}" team has been created.`,
     });
     setIsTeamDialogOpen(false);
-     // Here you would typically refetch or update your teams state
   };
 
   const handleAiSubmit = async (command: string) => {
@@ -180,7 +257,7 @@ export default function DashboardPage() {
             priority: result.priority || 'Medium',
         };
 
-        setTaskToEdit(partialTask as Task);
+        setTaskToEdit(partialTask);
         setIsAiDialogOpen(false);
         setIsTaskDialogOpen(true);
 
@@ -199,11 +276,20 @@ export default function DashboardPage() {
     setIsTaskDialogOpen(true);
   }
 
+  if (isUserLoading) {
+      return <div className="flex items-center justify-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  }
+
+  if (!user) {
+      router.push('/login');
+      return null;
+  }
+
   return (
     <>
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold font-headline">Welcome back, {user.name.split(' ')[0]}!</h1>
+        <h1 className="text-3xl font-bold font-headline">Welcome back, {user.displayName?.split(' ')[0]}!</h1>
         <p className="text-muted-foreground">Here's your productivity snapshot for today.</p>
       </div>
 

@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,14 +8,28 @@ import { Label } from '@/components/ui/label';
 import { Clock } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { FirebaseClientProvider, useAuth } from '@/firebase';
+import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
+import { useToast } from '@/hooks/use-toast';
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const auth = useAuth();
+  const { toast } = useToast();
 
   const handleLogin = (event: React.FormEvent) => {
     event.preventDefault();
-    // In a real app, you'd handle Firebase auth here.
-    // For this prototype, we'll just redirect.
+    const form = event.currentTarget as HTMLFormElement;
+    const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+    const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+
+    initiateEmailSignIn(auth, email, password);
+    
+    // Non-blocking, redirect is handled by auth state listener in layout/provider
+    toast({
+      title: 'Logging in...',
+      description: 'You will be redirected shortly.',
+    });
     router.push('/dashboard');
   };
 
@@ -36,11 +51,11 @@ export default function LoginPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="sarah@example.com" required />
+                <Input id="email" name="email" type="email" placeholder="sarah@example.com" required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" required />
+                <Input id="password" name="password" type="password" required />
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
@@ -59,4 +74,13 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+
+export default function LoginPage() {
+    return (
+        <FirebaseClientProvider>
+            <LoginPageContent />
+        </FirebaseClientProvider>
+    )
 }

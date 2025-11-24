@@ -1,8 +1,17 @@
+import { FieldValue } from "firebase/firestore";
+
 export type User = {
   id: string;
   name: string;
   email: string;
-  avatarUrl: string;
+  avatarUrl?: string;
+  createdAt: FieldValue;
+  summary: {
+    totalTasks: number;
+    completedToday: number;
+    overdue: number;
+    lastUpdated: FieldValue;
+  }
 };
 
 export type Task = {
@@ -11,12 +20,16 @@ export type Task = {
   description?: string;
   status: 'todo' | 'in_progress' | 'done';
   dueDate: string; // ISO string
+  completedAt: FieldValue | null;
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
   estimatedDuration: number; // in minutes
   tags: string[];
   ownerId: string;
   teamId?: string;
   assignedTo?: string; // userId
+  version: number;
+  createdAt: FieldValue;
+  updatedAt: FieldValue;
 };
 
 export type Note = {
@@ -31,5 +44,6 @@ export type Team = {
   id: string;
   name: string;
   description: string;
-  members: User[];
+  members: string[]; // array of user IDs
+  createdAt: FieldValue;
 };

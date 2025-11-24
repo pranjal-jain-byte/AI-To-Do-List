@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { tasks as initialTasks } from '@/lib/data';
+import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
@@ -18,7 +18,6 @@ import {
   PlusCircle,
   Pencil,
   Trash2,
-  ChevronDown,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -37,6 +36,8 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
+import { collection, query, where, doc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { updateDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const priorityVariant = {
   Low: 'secondary',
@@ -139,13 +140,22 @@ function TaskTable({
 }
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const { user } = useUser();
+  const firestore = useFirestore();
+  
+  const tasksQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'tasks'), where('ownerId', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: tasks, isLoading } = useCollection<Task>(tasksQuery);
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  const incompleteTasks = tasks.filter((task) => task.status !== 'done');
-  const completedTasks = tasks.filter((task) => task.status === 'done');
+  const upcomingTasks = tasks?.filter(task => task.status !== 'done' && new Date(task.dueDate) >= new Date(new Date().setHours(0,0,0,0))) || [];
+  const completedTasks = tasks?.filter(task => task.status === 'done') || [];
 
   const handleAddTask = () => {
     setSelectedTask(null);
@@ -164,46 +174,51 @@ export default function TasksPage() {
 
   const confirmDelete = () => {
     if (selectedTask) {
-      setTasks(tasks.filter((task) => task.id !== selectedTask.id));
+      deleteDocumentNonBlocking(doc(firestore, 'tasks', selectedTask.id));
       setIsAlertDialogOpen(false);
       setSelectedTask(null);
     }
   };
 
   const handleToggleComplete = (taskToToggle: Task) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === taskToToggle.id
-          ? {
-              ...task,
-              status: task.status === 'done' ? 'todo' : 'done',
-            }
-          : task
-      )
-    );
+    const taskRef = doc(firestore, 'tasks', taskToToggle.id);
+    const newStatus = taskToToggle.status === 'done' ? 'todo' : 'done';
+    
+    updateDocumentNonBlocking(taskRef, {
+      status: newStatus,
+      completedAt: newStatus === 'done' ? serverTimestamp() : null,
+      updatedAt: serverTimestamp(),
+      version: (taskToToggle.version || 1) + 1
+    });
   };
 
   const handleSaveTask = (
-    taskData: Omit<Task, 'id' | 'ownerId' | 'status'> & { id?: string }
+    taskData: Omit<Task, 'id' | 'ownerId' | 'status' | 'version' | 'createdAt' | 'updatedAt' | 'completedAt'> & { id?: string }
   ) => {
+    if (!user) return;
+    
     if (taskData.id) {
-      // Edit existing task
-      setTasks(
-        tasks.map((task) =>
-          task.id === taskData.id ? { ...task, ...taskData } : task
-        )
-      );
-    } else {
-      // Add new task
-      const newTask: Task = {
+      const taskRef = doc(firestore, 'tasks', taskData.id);
+      const existingTask = tasks?.find(t => t.id === taskData.id);
+      setDocumentNonBlocking(taskRef, {
         ...taskData,
-        id: `TASK-${Math.floor(Math.random() * 10000)}`,
-        ownerId: 'user-1', // Assuming a logged in user
+        version: (existingTask?.version || 1) + 1,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+    } else {
+      const newTask: Omit<Task, 'id'> = {
+        ...taskData,
+        ownerId: user.uid,
         status: 'todo',
-        tags: taskData.tags || [],
+        version: 1,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        completedAt: null,
+        tags: [],
         description: taskData.description || '',
       };
-      setTasks([newTask, ...tasks]);
+      addDoc(collection(firestore, 'tasks'), newTask);
     }
     setIsDialogOpen(false);
     setSelectedTask(null);
@@ -212,40 +227,45 @@ export default function TasksPage() {
   return (
     <div className="space-y-6">
       <TaskToolbar onAddTask={handleAddTask} />
-      <Card>
-        <CardContent className="pt-6">
-          <h2 className="text-lg font-semibold mb-2 pl-4">Upcoming</h2>
-          <TaskTable
-            tasks={incompleteTasks}
-            onEdit={handleEditTask}
-            onDelete={handleDeleteTask}
-            onToggle={handleToggleComplete}
-          />
-        </CardContent>
-      </Card>
-      {completedTasks.length > 0 && (
-        <Accordion type="single" collapsible>
-          <AccordionItem value="completed">
+       {isLoading && <p>Loading tasks...</p>}
+       {!isLoading && (
+        <>
             <Card>
-              <AccordionTrigger className="p-6">
-                <h2 className="text-lg font-semibold">
-                  Completed ({completedTasks.length})
-                </h2>
-              </AccordionTrigger>
-              <AccordionContent>
-                <CardContent>
-                  <TaskTable
-                    tasks={completedTasks}
+                <CardContent className="pt-6">
+                <h2 className="text-lg font-semibold mb-2 pl-4">Upcoming</h2>
+                <TaskTable
+                    tasks={upcomingTasks}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
                     onToggle={handleToggleComplete}
-                  />
+                />
                 </CardContent>
-              </AccordionContent>
             </Card>
-          </AccordionItem>
-        </Accordion>
-      )}
+            {completedTasks.length > 0 && (
+                <Accordion type="single" collapsible>
+                <AccordionItem value="completed">
+                    <Card>
+                    <AccordionTrigger className="p-6">
+                        <h2 className="text-lg font-semibold">
+                        Completed ({completedTasks.length})
+                        </h2>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <CardContent>
+                        <TaskTable
+                            tasks={completedTasks}
+                            onEdit={handleEditTask}
+                            onDelete={handleDeleteTask}
+                            onToggle={handleToggleComplete}
+                        />
+                        </CardContent>
+                    </AccordionContent>
+                    </Card>
+                </AccordionItem>
+                </Accordion>
+            )}
+        </>
+       )}
 
       <TaskDialog
         isOpen={isDialogOpen}

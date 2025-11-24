@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { teams as initialTeams, users, getAuthenticatedUser } from '@/lib/data';
 import type { Team, User } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,8 +9,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TeamDialog } from '@/components/dashboard/team-dialog';
 import { useRouter } from 'next/navigation';
+import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore';
 
-function TeamCard({ team }: { team: Team }) {
+function TeamCard({ team, members }: { team: Team, members: User[] }) {
   const router = useRouter();
 
   return (
@@ -30,7 +31,7 @@ function TeamCard({ team }: { team: Team }) {
         <div className="flex items-center space-x-2">
           <div className="flex -space-x-2 overflow-hidden">
             <TooltipProvider delayDuration={0}>
-            {team.members.slice(0, 3).map((member) => (
+            {members.slice(0, 3).map((member) => (
                 <Tooltip key={member.id}>
                     <TooltipTrigger>
                         <Avatar className="h-8 w-8 border-2 border-background">
@@ -56,19 +57,57 @@ function TeamCard({ team }: { team: Team }) {
   );
 }
 
-export default function TeamsPage() {
-  const [teams, setTeams] = useState<Team[]>(initialTeams);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const user = getAuthenticatedUser();
+function TeamsList() {
+    const { user } = useUser();
+    const firestore = useFirestore();
 
-  const handleSaveTeam = (teamData: Omit<Team, 'id' | 'members'>) => {
-    const newTeam: Team = {
-        id: `team-${Math.floor(Math.random() * 10000)}`,
+    const teamsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'teams'), where('members', 'array-contains', user.uid));
+    }, [firestore, user]);
+
+    const { data: teams, isLoading } = useCollection<Team>(teamsQuery);
+    const [teamMembers, setTeamMembers] = useState<{[teamId: string]: User[]}>({});
+
+    useState(() => {
+        if (teams) {
+            teams.forEach(team => {
+                const memberPromises = team.members.map(memberId => getDoc(doc(firestore, 'users', memberId)));
+                Promise.all(memberPromises).then(memberDocs => {
+                    const members = memberDocs.map(doc => doc.data() as User);
+                    setTeamMembers(prev => ({ ...prev, [team.id]: members }));
+                });
+            });
+        }
+    });
+
+    if (isLoading) {
+        return <p>Loading teams...</p>
+    }
+
+    return (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {teams && teams.map((team) => (
+                <TeamCard key={team.id} team={team} members={teamMembers[team.id] || []} />
+            ))}
+        </div>
+    )
+}
+
+export default function TeamsPage() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const handleSaveTeam = (teamData: Omit<Team, 'id' | 'members' | 'createdAt'>) => {
+    if (!user) return;
+    const newTeam = {
         name: teamData.name,
         description: teamData.description,
-        members: [user] // The creator is the first member
+        members: [user.uid],
+        createdAt: serverTimestamp()
     };
-    setTeams([newTeam, ...teams]);
+    addDoc(collection(firestore, 'teams'), newTeam);
     setIsDialogOpen(false);
   };
 
@@ -82,11 +121,7 @@ export default function TeamsPage() {
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {teams.map((team) => (
-          <TeamCard key={team.id} team={team} />
-        ))}
-      </div>
+      <TeamsList />
 
       <TeamDialog
         isOpen={isDialogOpen}
