@@ -5,10 +5,11 @@ import { teams as initialTeams, tasks as initialTasks, getAuthenticatedUser } fr
 import type { Team, Task } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Users, List, Clock, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Users, List, Clock, CheckCircle2, UserPlus, Link as LinkIcon, LogOut, Copy } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 
 const priorityVariant = {
@@ -22,10 +23,11 @@ export default function TeamDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const teamId = params.teamId as string;
+  const { toast } = useToast();
 
   const [team, setTeam] = useState<Team | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
-
+  
   useEffect(() => {
     const foundTeam = initialTeams.find((t) => t.id === teamId);
     if (foundTeam) {
@@ -34,6 +36,24 @@ export default function TeamDetailsPage() {
       setTasks(teamTasks);
     }
   }, [teamId]);
+
+  const handleCopyLink = () => {
+    const inviteLink = `${window.location.origin}/teams/${teamId}/join`;
+    navigator.clipboard.writeText(inviteLink);
+    toast({
+      title: 'Invite link copied!',
+      description: 'You can now share the link with your team.',
+    });
+  };
+  
+  const handleLeaveTeam = () => {
+    // In a real app, this would be a backend call.
+    toast({
+        title: "You have left the team.",
+        description: `You are no longer a member of ${team?.name}.`,
+    });
+    router.push('/dashboard/teams');
+  }
 
   if (!team) {
     return (
@@ -44,44 +64,76 @@ export default function TeamDetailsPage() {
   }
   
   const user = getAuthenticatedUser();
+  const isMember = team.members.some(m => m.id === user.id);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-            <h1 className="text-3xl font-bold font-headline flex items-center gap-2">
-                <Users className="h-8 w-8 text-primary" />
-                {team.name}
-            </h1>
-            <p className="text-muted-foreground">{team.description}</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+                <h1 className="text-3xl font-bold font-headline flex items-center gap-2">
+                    <Users className="h-8 w-8 text-primary" />
+                    {team.name}
+                </h1>
+                <p className="text-muted-foreground">{team.description}</p>
+            </div>
         </div>
+        {isMember && (
+            <Button variant="destructive" onClick={handleLeaveTeam}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Leave Team
+            </Button>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Team Members</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-4">
-              {team.members.map((member) => (
-                <li key={member.id} className="flex items-center gap-4">
-                  <Avatar>
-                    <AvatarImage src={member.avatarUrl} />
-                    <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{member.name} {member.id === user.id && '(You)'}</p>
-                    <p className="text-sm text-muted-foreground">{member.email}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+        <div className="md:col-span-1 space-y-6">
+            <Card>
+            <CardHeader>
+                <CardTitle>Team Members</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ul className="space-y-4">
+                {team.members.map((member) => (
+                    <li key={member.id} className="flex items-center gap-4">
+                    <Avatar>
+                        <AvatarImage src={member.avatarUrl} />
+                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="font-medium">{member.name} {member.id === user.id && '(You)'}</p>
+                        <p className="text-sm text-muted-foreground">{member.email}</p>
+                    </div>
+                    </li>
+                ))}
+                </ul>
+            </CardContent>
+            </Card>
+             <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5" />
+                  Invite Members
+                </CardTitle>
+                 <CardDescription>Share this link with people you want to invite.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2">
+                  <Input 
+                    readOnly 
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/teams/${teamId}/join`} 
+                  />
+                  <Button variant="outline" size="icon" onClick={handleCopyLink}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+        </div>
+
 
         <Card className="md:col-span-2">
           <CardHeader>

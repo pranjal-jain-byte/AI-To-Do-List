@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { teams as initialTeams, users } from '@/lib/data';
+import { teams as initialTeams, users, getAuthenticatedUser } from '@/lib/data';
 import type { Team, User } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,13 +59,14 @@ function TeamCard({ team }: { team: Team }) {
 export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>(initialTeams);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const user = getAuthenticatedUser();
 
-  const handleSaveTeam = (teamData: Omit<Team, 'id' | 'members'> & { memberIds: string[] }) => {
+  const handleSaveTeam = (teamData: Omit<Team, 'id' | 'members'>) => {
     const newTeam: Team = {
         id: `team-${Math.floor(Math.random() * 10000)}`,
         name: teamData.name,
         description: teamData.description,
-        members: users.filter(u => teamData.memberIds.includes(u.id))
+        members: [user] // The creator is the first member
     };
     setTeams([newTeam, ...teams]);
     setIsDialogOpen(false);
@@ -91,7 +92,6 @@ export default function TeamsPage() {
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
         onSave={handleSaveTeam}
-        allUsers={users}
       />
     </div>
   );
