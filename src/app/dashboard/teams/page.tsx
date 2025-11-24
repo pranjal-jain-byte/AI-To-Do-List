@@ -63,12 +63,12 @@ function TeamCard({ team }: { team: Team }) {
   return (
     <Card className="flex flex-col">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
             <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary"/>
                 {team.name}
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/teams/${team.id}`)}>View</Button>
+            <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/teams/${team.id}`)} className="shrink-0">View</Button>
         </div>
         <CardDescription>{team.description}</CardDescription>
       </CardHeader>
