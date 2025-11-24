@@ -3,14 +3,10 @@
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
-import { Auth, User } from 'firebase/auth';
+import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import type { LocalUser } from '@/lib/types';
 
-// A simpler user object for local state
-export interface LocalUser {
-  uid: string;
-  displayName: string;
-}
 
 // Combined state for the Firebase context
 export interface FirebaseContextState {
@@ -19,9 +15,9 @@ export interface FirebaseContextState {
   firestore: Firestore | null;
   auth: Auth | null; // The Auth service instance
   // User authentication state
-  user: LocalUser | null;
+  user: User | null;
   isUserLoading: boolean; 
-  setUser: (user: LocalUser | null) => void;
+  setUser: (user: User | null) => void;
 }
 
 // Return type for useFirebase()
@@ -29,16 +25,16 @@ export interface FirebaseServicesAndUser {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
-  user: LocalUser | null;
+  user: User | null;
   isUserLoading: boolean;
-  setUser: (user: LocalUser | null) => void;
+  setUser: (user: User | null) => void;
 }
 
 // Return type for useUser() - specific to user auth state
 export interface UserHookResult {
-  user: LocalUser | null;
+  user: User | null;
   isUserLoading: boolean;
-  setUser: (user: LocalUser | null) => void;
+  setUser: (user: User | null) => void;
 }
 
 // React Context
@@ -60,19 +56,18 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   firestore,
   auth,
 }) => {
-  const [user, setUser] = useState<LocalUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
 
-  useEffect(() => {
-    // This effect runs once on mount to establish the initial loading state.
-    // For this simplified flow, we just transition from loading to not loading.
-    setIsUserLoading(false);
-  }, []);
+   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setIsUserLoading(false);
+    });
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [auth]);
 
-  const handleSetUser = (user: LocalUser | null) => {
-    setUser(user);
-    // No more session/local storage, state is managed by React for the session.
-  }
 
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
@@ -84,7 +79,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth: servicesAvailable ? auth : null,
       user: user,
       isUserLoading: isUserLoading,
-      setUser: handleSetUser,
+      setUser: setUser,
     };
   }, [firebaseApp, firestore, auth, user, isUserLoading]);
 

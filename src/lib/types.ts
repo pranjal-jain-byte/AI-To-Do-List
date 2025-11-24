@@ -1,4 +1,4 @@
-import { FieldValue } from "firebase/firestore";
+import { FieldValue, User as FirebaseUser } from "firebase/firestore";
 
 export type User = {
   id: string;
@@ -48,8 +48,5 @@ export type Team = {
   createdAt: FieldValue;
 };
 
-// Simplified user for non-auth flow
-export interface LocalUser {
-  uid: string;
-  displayName: string;
-}
+// This can be the Firebase User type or a simplified version
+export type LocalUser = FirebaseUser;

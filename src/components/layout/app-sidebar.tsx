@@ -10,20 +10,22 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useUser } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import { CheckSquare, Clock, FileText, Home, LogOut, Settings, Users, Zap, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { signOut } from 'firebase/auth';
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const { user, isUserLoading, setUser } = useUser();
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
   const isActive = (path: string) => pathname === path;
 
-  const handleLogout = () => {
-    setUser(null);
-    router.push('/');
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/start');
   };
 
   if (isUserLoading) {
@@ -91,11 +93,11 @@ export default function AppSidebar() {
       <SidebarFooter>
         <div className="flex items-center gap-3 p-2 rounded-lg bg-sidebar-accent">
             <Avatar className="h-9 w-9">
-              <AvatarImage src={undefined} alt={user?.displayName || ''} />
-              <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
+              <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ''} />
+              <AvatarFallback>{user?.displayName?.charAt(0) || user?.email?.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-1 overflow-hidden">
-                <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{user?.displayName}</p>
+                <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{user?.displayName || user?.email}</p>
             </div>
             <button onClick={handleLogout}>
                 <LogOut className="h-5 w-5 text-sidebar-foreground/70 hover:text-sidebar-accent-foreground" />
