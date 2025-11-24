@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { List, CheckCircle2, AlertCircle, Zap, Clock, Users, FileText, CheckSquare, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
