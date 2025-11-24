@@ -4,12 +4,11 @@ import { useParams, useRouter } from 'next/navigation';
 import type { Team, Task, User } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Users, List, Clock, CheckCircle2, UserPlus, LogOut, Copy } from 'lucide-react';
+import { ArrowLeft, Users, List, Clock, CheckCircle2, UserPlus, LogOut, Copy, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react';
 import { useDoc, useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, updateDoc, arrayRemove } from 'firebase/firestore';
 
@@ -20,6 +19,54 @@ const priorityVariant = {
   Critical: 'destructive',
 } as const;
 
+function MemberList({ memberIds }: { memberIds: string[] }) {
+    const firestore = useFirestore();
+    const { user: currentUser } = useUser();
+
+    // Although we are fetching multiple users, we can't use a single `useCollection` with a `where('id', 'in', ...)`
+    // query because the number of members might exceed Firestore's limit of 30 disjunctions.
+    // Instead, we fetch each member's document individually using `useDoc`.
+    const memberDocs = memberIds.map(id => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const userDocRef = useMemoFirebase(() => doc(firestore, 'users', id), [firestore, id]);
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        return useDoc<User>(userDocRef);
+    });
+
+    const isLoading = memberDocs.some(doc => doc.isLoading);
+    const members = memberDocs.map(doc => doc.data).filter((m): m is User => !!m);
+
+    if (isLoading) {
+        return (
+             <div className="space-y-4">
+                {[...Array(memberIds.length || 2)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span className="text-sm text-muted-foreground">Loading member...</span>
+                    </div>
+                ))}
+            </div>
+        )
+    }
+
+    return (
+        <ul className="space-y-4">
+        {members.map((member) => (
+            <li key={member.id} className="flex items-center gap-4">
+            <Avatar>
+                <AvatarImage src={member.avatarUrl} />
+                <AvatarFallback>{member.name?.charAt(0) || '?'}</AvatarFallback>
+            </Avatar>
+            <div>
+                <p className="font-medium">{member.name} {member.id === currentUser?.uid && '(You)'}</p>
+                <p className="text-sm text-muted-foreground">{member.email}</p>
+            </div>
+            </li>
+        ))}
+        </ul>
+    );
+}
+
 export default function TeamDetailsPage() {
   const router = useRouter();
   const params = useParams();
@@ -28,29 +75,18 @@ export default function TeamDetailsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const teamDocRef = useMemoFirebase(() => doc(firestore, 'teams', teamId), [firestore, teamId]);
+  const teamDocRef = useMemoFirebase(() => {
+    if (!teamId) return null;
+    return doc(firestore, 'teams', teamId);
+  }, [firestore, teamId]);
   const { data: team, isLoading: isLoadingTeam } = useDoc<Team>(teamDocRef);
 
-  const tasksQuery = useMemoFirebase(() => query(collection(firestore, 'tasks'), where('teamId', '==', teamId)), [firestore, teamId]);
+  const tasksQuery = useMemoFirebase(() => {
+    if (!teamId) return null;
+    return query(collection(firestore, 'tasks'), where('teamId', '==', teamId));
+  }, [firestore, teamId]);
   const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
   
-  const [members, setMembers] = useState<User[]>([]);
-
-  useEffect(() => {
-    if (team?.members) {
-      const memberPromises = team.members.map(memberId => getDoc(doc(firestore, 'users', memberId)));
-      Promise.all(memberPromises).then(memberDocs => {
-        const memberData = memberDocs.map(doc => doc.data() as User);
-        setMembers(memberData);
-      });
-    }
-  }, [team, firestore]);
-
-  const getDoc = async (docRef: any) => {
-    const docSnap = await import('firebase/firestore').then(m => m.getDoc(docRef));
-    return docSnap;
-  }
-
   const handleCopyLink = () => {
     const inviteLink = `${window.location.origin}/teams/${teamId}/join`;
     navigator.clipboard.writeText(inviteLink);
@@ -76,7 +112,8 @@ export default function TeamDetailsPage() {
   if (isLoadingTeam) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p>Loading team...</p>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="ml-2">Loading team...</p>
       </div>
     );
   }
@@ -121,20 +158,7 @@ export default function TeamDetailsPage() {
                 <CardTitle>Team Members</CardTitle>
             </CardHeader>
             <CardContent>
-                <ul className="space-y-4">
-                {members.map((member) => (
-                    <li key={member.id} className="flex items-center gap-4">
-                    <Avatar>
-                        <AvatarImage src={member.avatarUrl} />
-                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <p className="font-medium">{member.name} {member.id === user?.uid && '(You)'}</p>
-                        <p className="text-sm text-muted-foreground">{member.email}</p>
-                    </div>
-                    </li>
-                ))}
-                </ul>
+                {team.members && <MemberList memberIds={team.members} />}
             </CardContent>
             </Card>
              <Card>
@@ -166,7 +190,7 @@ export default function TeamDetailsPage() {
             <CardDescription>Tasks assigned to {team.name}</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoadingTasks && <p>Loading tasks...</p>}
+            {isLoadingTasks && <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}
             {!isLoadingTasks && tasks && tasks.length > 0 ? (
                 <ul className="space-y-4">
                     {tasks.map((task) => (

@@ -4,15 +4,57 @@ import { useState } from 'react';
 import type { Team, User } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Users } from 'lucide-react';
+import { PlusCircle, Users, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TeamDialog } from '@/components/dashboard/team-dialog';
 import { useRouter } from 'next/navigation';
-import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore';
+import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 
-function TeamCard({ team, members }: { team: Team, members: User[] }) {
+
+function TeamMembers({ memberIds }: { memberIds: string[] }) {
+    const firestore = useFirestore();
+
+    const memberDocs = memberIds.slice(0, 3).map(id => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const userDocRef = useMemoFirebase(() => doc(firestore, 'users', id), [firestore, id]);
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        return useDoc<User>(userDocRef);
+    });
+
+    const members = memberDocs.map(doc => doc.data).filter((m): m is User => !!m);
+
+    return (
+        <div className="flex items-center space-x-2">
+            <div className="flex -space-x-2 overflow-hidden">
+                <TooltipProvider delayDuration={0}>
+                {members.map((member) => (
+                    <Tooltip key={member.id}>
+                        <TooltipTrigger>
+                            <Avatar className="h-8 w-8 border-2 border-background">
+                                <AvatarImage src={member.avatarUrl} />
+                                <AvatarFallback>{member.name?.charAt(0) || '?'}</AvatarFallback>
+                            </Avatar>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{member.name}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                ))}
+                </TooltipProvider>
+            </div>
+            {memberIds.length > 3 && (
+                <span className="text-sm font-medium text-muted-foreground">
+                +{memberIds.length - 3} more
+                </span>
+            )}
+        </div>
+    );
+}
+
+
+function TeamCard({ team }: { team: Team }) {
   const router = useRouter();
 
   return (
@@ -28,30 +70,7 @@ function TeamCard({ team, members }: { team: Team, members: User[] }) {
         <CardDescription>{team.description}</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow flex items-end">
-        <div className="flex items-center space-x-2">
-          <div className="flex -space-x-2 overflow-hidden">
-            <TooltipProvider delayDuration={0}>
-            {members.slice(0, 3).map((member) => (
-                <Tooltip key={member.id}>
-                    <TooltipTrigger>
-                        <Avatar className="h-8 w-8 border-2 border-background">
-                            <AvatarImage src={member.avatarUrl} />
-                            <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>{member.name}</p>
-                    </TooltipContent>
-                </Tooltip>
-            ))}
-            </TooltipProvider>
-          </div>
-          {team.members.length > 3 && (
-            <span className="text-sm font-medium text-muted-foreground">
-              +{team.members.length - 3} more
-            </span>
-          )}
-        </div>
+        {team.members && <TeamMembers memberIds={team.members} />}
       </CardContent>
     </Card>
   );
@@ -67,28 +86,31 @@ function TeamsList() {
     }, [firestore, user]);
 
     const { data: teams, isLoading } = useCollection<Team>(teamsQuery);
-    const [teamMembers, setTeamMembers] = useState<{[teamId: string]: User[]}>({});
-
-    useState(() => {
-        if (teams) {
-            teams.forEach(team => {
-                const memberPromises = team.members.map(memberId => getDoc(doc(firestore, 'users', memberId)));
-                Promise.all(memberPromises).then(memberDocs => {
-                    const members = memberDocs.map(doc => doc.data() as User);
-                    setTeamMembers(prev => ({ ...prev, [team.id]: members }));
-                });
-            });
-        }
-    });
 
     if (isLoading) {
-        return <p>Loading teams...</p>
+        return (
+             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {[...Array(3)].map((_, i) => (
+                     <Card key={i}><CardContent className="pt-6 flex items-center justify-center h-48"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
+                ))}
+             </div>
+        );
+    }
+    
+    if (!teams || teams.length === 0) {
+        return (
+            <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-lg">
+                <Users className="mx-auto h-12 w-12" />
+                <h3 className="mt-4 text-lg font-semibold">No teams yet</h3>
+                <p className="mt-2 text-sm">Create a team to start collaborating with others.</p>
+            </div>
+        )
     }
 
     return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {teams && teams.map((team) => (
-                <TeamCard key={team.id} team={team} members={teamMembers[team.id] || []} />
+            {teams.map((team) => (
+                <TeamCard key={team.id} team={team} />
             ))}
         </div>
     )
