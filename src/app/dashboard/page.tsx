@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { List, CheckCircle2, AlertCircle, Zap, Clock, Users, FileText, CheckSquare, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -21,17 +21,15 @@ function TodaysPlan({ tasks, isLoading }: { tasks: Task[], isLoading: boolean })
     const [isReplanning, setIsReplanning] = useState(false);
     const { toast } = useToast();
     
-    useEffect(() => {
-        setOrderedTasks(tasks);
-    }, [tasks]);
-
     const handleReplan = async () => {
-        if (!orderedTasks || orderedTasks.length === 0) return;
+        const tasksToReplan = tasks;
+        if (!tasksToReplan || tasksToReplan.length === 0) return;
+
         setIsReplanning(true);
         try {
-            const result = await suggestTaskOrder({ tasks: orderedTasks });
+            const result = await suggestTaskOrder({ tasks: tasksToReplan });
             const reorderedTasks = result.orderedTasks.map(taskId => 
-                orderedTasks.find(t => t.id === taskId)
+                tasksToReplan.find(t => t.id === taskId)
             ).filter((t): t is Task => !!t);
             setOrderedTasks(reorderedTasks);
             toast({
@@ -49,6 +47,8 @@ function TodaysPlan({ tasks, isLoading }: { tasks: Task[], isLoading: boolean })
             setIsReplanning(false);
         }
     };
+    
+    const displayTasks = orderedTasks.length > 0 ? orderedTasks : tasks;
 
     return (
         <Card className="col-span-1 lg:col-span-2">
@@ -73,9 +73,9 @@ function TodaysPlan({ tasks, isLoading }: { tasks: Task[], isLoading: boolean })
                         <p className="ml-2 text-muted-foreground">Loading today's plan...</p>
                     </div>
                 )}
-                {!isLoading && orderedTasks && orderedTasks.length > 0 ? (
+                {!isLoading && displayTasks && displayTasks.length > 0 ? (
                 <ul className="space-y-4">
-                    {orderedTasks.map((task, index) => (
+                    {displayTasks.map((task, index) => (
                         <li key={task.id} className="flex items-start gap-4">
                              <div className="flex flex-col items-center">
                                 <span className="text-sm font-bold text-primary">
@@ -217,27 +217,27 @@ export default function DashboardPage() {
   const handleSaveTask = async (taskData: Omit<Task, 'id' | 'ownerId' | 'status' | 'version' | 'createdAt' | 'updatedAt' | 'completedAt'> & { id?: string }) => {
     if (!user) return;
 
-    const taskToSave = {
-        ...taskData,
-        ownerId: user.uid,
-        status: 'todo',
-        version: 1,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        completedAt: null,
-        tags: [],
-        description: taskData.description || '',
-    };
-    
     if (taskData.id) {
         const taskRef = doc(firestore, 'tasks', taskData.id);
         const existingTask = tasks?.find(t => t.id === taskData.id);
         await updateDoc(taskRef, {
           ...taskData,
+          ownerId: user.uid, // Ensure ownerId is always present
           version: (existingTask?.version || 1) + 1,
           updatedAt: serverTimestamp(),
         });
     } else {
+         const taskToSave = {
+            ...taskData,
+            ownerId: user.uid,
+            status: 'todo',
+            version: 1,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            completedAt: null,
+            tags: [],
+            description: taskData.description || '',
+        };
         await addDoc(collection(firestore, 'tasks'), taskToSave);
     }
     
