@@ -16,11 +16,10 @@ import { collection, query, where, addDoc, serverTimestamp, doc } from 'firebase
 function TeamMembers({ memberIds }: { memberIds: string[] }) {
     const firestore = useFirestore();
 
-    // Correctly fetch each member's document individually using useDoc.
     const memberDocs = memberIds.slice(0, 3).map(id => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const userDocRef = useMemoFirebase(() => {
-            if (!id) return null;
+            if (!id || !firestore) return null;
             return doc(firestore, 'users', id);
         }, [firestore, id]);
         // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -128,8 +127,7 @@ export default function TeamsPage() {
   const handleSaveTeam = (teamData: Omit<Team, 'id' | 'members' | 'createdAt'>) => {
     if (!user) return;
     const newTeam = {
-        name: teamData.name,
-        description: teamData.description,
+        ...teamData,
         members: [user.uid],
         createdAt: serverTimestamp()
     };
