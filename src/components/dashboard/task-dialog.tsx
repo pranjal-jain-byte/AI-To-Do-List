@@ -63,7 +63,7 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
       description: '',
       priority: 'Medium',
       dueDate: new Date(),
-      teamId: '',
+      teamId: 'none',
     },
   });
 
@@ -75,7 +75,7 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
             description: task.description,
             priority: task.priority,
             dueDate: new Date(task.dueDate),
-            teamId: task.teamId,
+            teamId: task.teamId || 'none',
         });
         } else {
         form.reset({
@@ -83,14 +83,20 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
             description: '',
             priority: 'Medium',
             dueDate: new Date(),
-            teamId: '',
+            teamId: 'none',
         });
         }
     }
   }, [task, form, isOpen]);
 
   const onSubmit = (data: TaskFormValues) => {
-    onSave({ ...data, dueDate: data.dueDate.toISOString(), id: task?.id });
+    const dataToSave = {
+        ...data,
+        dueDate: data.dueDate.toISOString(),
+        id: task?.id,
+        teamId: data.teamId === 'none' ? undefined : data.teamId,
+    };
+    onSave(dataToSave);
   };
 
   return (
@@ -136,14 +142,14 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Team (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Assign to a team" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">No Team</SelectItem>
+                      <SelectItem value="none">No Team</SelectItem>
                       {teams.map((team: Team) => (
                         <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
                       ))}
