@@ -12,6 +12,8 @@ import type { Task, Team } from '@/lib/types';
 import { suggestTaskOrder } from '@/ai/flows/suggest-task-order';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { AskAiDialog } from '@/components/dashboard/ask-ai-dialog';
+import { createTaskFromText } from '@/ai/flows/create-task-from-text';
 
 function TodaysPlan() {
     const [todaysTasks, setTodaysTasks] = useState(() => initialTasks.filter(t => new Date(t.dueDate).toDateString() === new Date().toDateString()).slice(0, 5));
@@ -137,6 +139,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
+  const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const { toast } = useToast();
 
   const handleSaveTask = (taskData: Omit<Task, 'id' | 'ownerId' | 'status'> & { id?: string }) => {
@@ -147,6 +151,7 @@ export default function DashboardPage() {
         description: `"${taskData.title}" has been saved.`,
     });
     setIsTaskDialogOpen(false);
+    setTaskToEdit(null);
     // Here you would typically refetch or update your tasks state
   };
   
@@ -159,6 +164,40 @@ export default function DashboardPage() {
     setIsTeamDialogOpen(false);
      // Here you would typically refetch or update your teams state
   };
+
+  const handleAiSubmit = async (command: string) => {
+    try {
+        const result = await createTaskFromText({ 
+            command,
+            context: {
+                currentDate: new Date().toISOString()
+            }
+        });
+        
+        const partialTask: Partial<Task> = {
+            title: result.title,
+            dueDate: result.dueDate || new Date().toISOString(),
+            priority: result.priority || 'Medium',
+        };
+
+        setTaskToEdit(partialTask as Task);
+        setIsAiDialogOpen(false);
+        setIsTaskDialogOpen(true);
+
+    } catch (error) {
+        console.error("AI task creation failed", error);
+        toast({
+            variant: "destructive",
+            title: "Uh oh! Something went wrong.",
+            description: "Could not create task from your command.",
+        });
+    }
+  };
+
+  const openNewTaskDialog = () => {
+    setTaskToEdit(null);
+    setIsTaskDialogOpen(true);
+  }
 
   return (
     <>
@@ -179,10 +218,10 @@ export default function DashboardPage() {
                   <CardTitle>Quick Access</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-4">
-                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => setIsTaskDialogOpen(true)}><CheckSquare/>New Task</Button>
+                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={openNewTaskDialog}><CheckSquare/>New Task</Button>
                   <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => router.push('/dashboard/notes')}><FileText/>New Note</Button>
                   <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => setIsTeamDialogOpen(true)}><Users/>New Team</Button>
-                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2"><Zap/>Ask AI</Button>
+                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => setIsAiDialogOpen(true)}><Zap/>Ask AI</Button>
               </CardContent>
           </Card>
       </div>
@@ -191,13 +230,18 @@ export default function DashboardPage() {
         isOpen={isTaskDialogOpen}
         onClose={() => setIsTaskDialogOpen(false)}
         onSave={handleSaveTask}
-        task={null}
+        task={taskToEdit}
       />
       <TeamDialog
         isOpen={isTeamDialogOpen}
         onClose={() => setIsTeamDialogOpen(false)}
         onSave={handleSaveTeam}
       />
+      <AskAiDialog
+        isOpen={isAiDialogOpen}
+        onClose={() => setIsAiDialogOpen(false)}
+        onSubmit={handleAiSubmit}
+       />
     </>
   );
 }
