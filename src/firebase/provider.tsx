@@ -3,7 +3,7 @@
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { Auth, User } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 
 // A simpler user object for local state
@@ -65,22 +65,13 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   useEffect(() => {
     // This effect runs once on mount to establish the initial loading state.
-    // In a real auth flow, you might check localStorage or onAuthStateChanged here.
     // For this simplified flow, we just transition from loading to not loading.
-    const storedUser = sessionStorage.getItem('chronos-user');
-    if (storedUser) {
-        setUser(JSON.parse(storedUser));
-    }
     setIsUserLoading(false);
   }, []);
 
   const handleSetUser = (user: LocalUser | null) => {
     setUser(user);
-    if (user) {
-      sessionStorage.setItem('chronos-user', JSON.stringify(user));
-    } else {
-      sessionStorage.removeItem('chronos-user');
-    }
+    // No more session/local storage, state is managed by React for the session.
   }
 
   // Memoize the context value

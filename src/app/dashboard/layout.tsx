@@ -3,9 +3,18 @@
 import { AppLayout } from '@/components/layout/app-layout';
 import { FirebaseClientProvider, useUser } from '@/firebase';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/start');
+    }
+  }, [isUserLoading, user, router]);
 
   if (isUserLoading || !user) {
     return (
