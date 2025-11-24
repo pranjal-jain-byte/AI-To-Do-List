@@ -5,10 +5,11 @@ import { notes } from '@/lib/data';
 import type { Note } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, PlusCircle, BrainCircuit, ListTodo, Loader2 } from 'lucide-react';
+import { FileText, PlusCircle, BrainCircuit, ListTodo, Loader2, CheckSquare } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { summarizeNotes } from '@/ai/flows/summarize-notes';
+import { extractTasksFromNotes } from '@/ai/flows/extract-tasks-from-notes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +19,9 @@ export default function NotesPage() {
     const [isSummarizing, setIsSummarizing] = useState(false);
     const [summary, setSummary] = useState<string | null>(null);
     const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
+    const [isExtracting, setIsExtracting] = useState(false);
+    const [extractedTasks, setExtractedTasks] = useState<string[] | null>(null);
+    const [isTasksDialogOpen, setIsTasksDialogOpen] = useState(false);
     const { toast } = useToast();
 
     const handleSummarize = async () => {
@@ -40,6 +44,29 @@ export default function NotesPage() {
             setIsSummaryDialogOpen(false);
         } finally {
             setIsSummarizing(false);
+        }
+    };
+
+    const handleExtractTasks = async () => {
+        if (!selectedNote) return;
+
+        setIsExtracting(true);
+        setExtractedTasks(null);
+        setIsTasksDialogOpen(true);
+
+        try {
+            const result = await extractTasksFromNotes({ notes: selectedNote.content });
+            setExtractedTasks(result.tasks);
+        } catch (error) {
+            console.error("Failed to extract tasks:", error);
+            toast({
+                variant: "destructive",
+                title: "Uh oh! Something went wrong.",
+                description: "Could not extract tasks from AI.",
+            });
+            setIsTasksDialogOpen(false);
+        } finally {
+            setIsExtracting(false);
         }
     };
 
@@ -106,8 +133,12 @@ export default function NotesPage() {
                                     )}
                                     Summarize with AI
                                 </Button>
-                                <Button variant="outline">
-                                    <ListTodo className="mr-2 h-4 w-4" />
+                                <Button variant="outline" onClick={handleExtractTasks} disabled={isExtracting}>
+                                    {isExtracting ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <ListTodo className="mr-2 h-4 w-4" />
+                                    )}
                                     Extract Tasks
                                 </Button>
                             </CardFooter>
@@ -146,6 +177,42 @@ export default function NotesPage() {
                             )
                         )}
                     </div>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={isTasksDialogOpen} onOpenChange={setIsTasksDialogOpen}>
+                <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle>Extracted Tasks</DialogTitle>
+                        <DialogDescription>
+                            Here are the tasks AI found in your note: "{selectedNote?.title}".
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        {isExtracting ? (
+                            <div className="flex items-center justify-center p-8">
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : (
+                            extractedTasks && (
+                                <div className="space-y-2">
+                                    {extractedTasks.length > 0 ? (
+                                        extractedTasks.map((task, index) => (
+                                            <div key={index} className="flex items-center p-3 rounded-md bg-muted/50">
+                                                <CheckSquare className="h-4 w-4 mr-3 text-primary" />
+                                                <span className="text-sm">{task}</span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground text-center py-4">No tasks were found in this note.</p>
+                                    )}
+                                </div>
+                            )
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsTasksDialogOpen(false)}>Close</Button>
+                        <Button>Add to My Tasks</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
