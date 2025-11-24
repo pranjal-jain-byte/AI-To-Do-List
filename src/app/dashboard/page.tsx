@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { List, CheckCircle2, AlertCircle, Zap, Clock, Users, FileText, CheckSquare, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -193,6 +193,12 @@ export default function DashboardPage() {
   const [taskToEdit, setTaskToEdit] = useState<Partial<Task> | null>(null);
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [isUserLoading, user, router]);
+
   const handleSaveTask = (taskData: Omit<Task, 'id' | 'ownerId' | 'status' | 'version' | 'createdAt' | 'updatedAt' | 'completedAt'> & { id?: string }) => {
     if (!user) return;
 
@@ -276,13 +282,8 @@ export default function DashboardPage() {
     setIsTaskDialogOpen(true);
   }
 
-  if (isUserLoading) {
+  if (isUserLoading || !user) {
       return <div className="flex items-center justify-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>
-  }
-
-  if (!user) {
-      router.push('/login');
-      return null;
   }
 
   return (
