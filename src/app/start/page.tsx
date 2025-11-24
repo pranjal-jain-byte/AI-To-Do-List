@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Clock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FirebaseClientProvider, useUser, useFirestore, useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -16,10 +16,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 function AuthForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectUrl = searchParams.get('redirect');
     const firestore = useFirestore();
     const auth = useAuth();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
+
+    const handleSuccess = () => {
+        router.push(redirectUrl || '/dashboard');
+    }
 
     const handleSignUp = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -48,12 +54,12 @@ function AuthForm() {
                     lastUpdated: serverTimestamp()
                 }
             }, { merge: true });
-
-            router.push('/dashboard');
+            
             toast({
                 title: `Welcome, ${name}!`,
                 description: "Your account has been created successfully.",
             });
+            handleSuccess();
 
         } catch (error: any) {
             toast({
@@ -75,11 +81,11 @@ function AuthForm() {
 
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            router.push('/dashboard');
             toast({
                 title: 'Welcome back!',
                 description: "You've successfully logged in.",
             });
+            handleSuccess();
         } catch (error: any) {
             toast({
                 variant: 'destructive',
