@@ -1,19 +1,46 @@
-import { getAuthenticatedUser, tasks } from '@/lib/data';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { List, CheckCircle2, AlertCircle, Zap, Clock, Users, FileText, CheckSquare } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
+'use client';
 
-const priorityIcons = {
-    'High': 'text-red-500',
-    'Critical': 'text-red-700',
-    'Medium': 'text-yellow-500',
-    'Low': 'text-green-500',
-}
+import { useState } from 'react';
+import { getAuthenticatedUser, tasks as initialTasks, teams as initialTeams } from '@/lib/data';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { List, CheckCircle2, AlertCircle, Zap, Clock, Users, FileText, CheckSquare, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { TaskDialog } from '@/components/dashboard/task-dialog';
+import { TeamDialog } from '@/components/dashboard/team-dialog';
+import type { Task, Team } from '@/lib/types';
+import { suggestTaskOrder } from '@/ai/flows/suggest-task-order';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 function TodaysPlan() {
-    const todaysTasks = tasks.filter(t => new Date(t.dueDate).toDateString() === new Date().toDateString()).slice(0, 5);
+    const [todaysTasks, setTodaysTasks] = useState(() => initialTasks.filter(t => new Date(t.dueDate).toDateString() === new Date().toDateString()).slice(0, 5));
+    const [isReplanning, setIsReplanning] = useState(false);
+    const { toast } = useToast();
+
+    const handleReplan = async () => {
+        setIsReplanning(true);
+        try {
+            const result = await suggestTaskOrder({ tasks: todaysTasks });
+            const orderedTasks = result.orderedTasks.map(taskId => 
+                todaysTasks.find(t => t.id === taskId)
+            ).filter((t): t is Task => !!t);
+            setTodaysTasks(orderedTasks);
+            toast({
+                title: "Your day has been re-planned!",
+                description: result.reasoning,
+            });
+        } catch (error) {
+            console.error("Failed to re-plan day:", error);
+            toast({
+                variant: "destructive",
+                title: "Uh oh! Something went wrong.",
+                description: "Could not get a new plan from AI.",
+            });
+        } finally {
+            setIsReplanning(false);
+        }
+    };
     
     return (
         <Card className="col-span-1 lg:col-span-2">
@@ -23,7 +50,12 @@ function TodaysPlan() {
                     <span>Today's Plan (AI Ordered)</span>
                 </CardTitle>
                 <CardDescription>Your AI-optimized schedule for today.
-                <Button size="sm" variant="outline" className="ml-4">Re-plan my day</Button>
+                <Button size="sm" variant="outline" className="ml-4" onClick={handleReplan} disabled={isReplanning}>
+                    {isReplanning ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null }
+                    Re-plan my day
+                </Button>
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -59,7 +91,7 @@ function TodaysPlan() {
 }
 
 function StatsCards() {
-    const overdueTasks = tasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'done').length;
+    const overdueTasks = initialTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'done').length;
 
     return (
         <>
@@ -69,7 +101,7 @@ function StatsCards() {
                     <List className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{tasks.length}</div>
+                    <div className="text-2xl font-bold">{initialTasks.length}</div>
                     <p className="text-xs text-muted-foreground">Across all projects</p>
                 </CardContent>
             </Card>
@@ -80,7 +112,7 @@ function StatsCards() {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">
-                        {tasks.filter(t => new Date(t.dueDate).toDateString() === new Date().toDateString() && t.status === 'done').length}
+                        {initialTasks.filter(t => new Date(t.dueDate).toDateString() === new Date().toDateString() && t.status === 'done').length}
                     </div>
                     <p className="text-xs text-muted-foreground">Great progress!</p>
                 </CardContent>
@@ -102,7 +134,34 @@ function StatsCards() {
 
 export default function DashboardPage() {
   const user = getAuthenticatedUser();
+  const router = useRouter();
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const handleSaveTask = (taskData: Omit<Task, 'id' | 'ownerId' | 'status'> & { id?: string }) => {
+    // In a real app, you would save this to your database
+    console.log('Saving task:', taskData);
+    toast({
+        title: taskData.id ? "Task updated!" : "Task created!",
+        description: `"${taskData.title}" has been saved.`,
+    });
+    setIsTaskDialogOpen(false);
+    // Here you would typically refetch or update your tasks state
+  };
+  
+  const handleSaveTeam = (teamData: Omit<Team, 'id' | 'members'>) => {
+    console.log('Saving team:', teamData);
+     toast({
+        title: "Team created!",
+        description: `The "${teamData.name}" team has been created.`,
+    });
+    setIsTeamDialogOpen(false);
+     // Here you would typically refetch or update your teams state
+  };
+
   return (
+    <>
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold font-headline">Welcome back, {user.name.split(' ')[0]}!</h1>
@@ -120,13 +179,25 @@ export default function DashboardPage() {
                   <CardTitle>Quick Access</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-4">
-                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2"><CheckSquare/>New Task</Button>
-                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2"><FileText/>New Note</Button>
-                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2"><Users/>New Team</Button>
+                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => setIsTaskDialogOpen(true)}><CheckSquare/>New Task</Button>
+                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => router.push('/dashboard/notes')}><FileText/>New Note</Button>
+                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => setIsTeamDialogOpen(true)}><Users/>New Team</Button>
                   <Button variant="outline" size="lg" className="h-24 flex-col gap-2"><Zap/>Ask AI</Button>
               </CardContent>
           </Card>
       </div>
     </div>
+    <TaskDialog
+        isOpen={isTaskDialogOpen}
+        onClose={() => setIsTaskDialogOpen(false)}
+        onSave={handleSaveTask}
+        task={null}
+      />
+      <TeamDialog
+        isOpen={isTeamDialogOpen}
+        onClose={() => setIsTeamDialogOpen(false)}
+        onSave={handleSaveTeam}
+      />
+    </>
   );
 }
