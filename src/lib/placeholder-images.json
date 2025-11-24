@@ -1,3 +1,46 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero",
+      "description": "Abstract visualization of a futuristic AI dashboard",
+      "imageUrl": "https://images.unsplash.com/photo-1595488239627-18692ff2f20e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YWJzdHJhY3QlMjBkYXNoYm9hcmR8ZW58MHx8fHwxNzYzOTYzNTg4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract dashboard"
+    },
+    {
+      "id": "avatar1",
+      "description": "Avatar for Sarah Lee",
+      "imageUrl": "https://images.unsplash.com/photo-1557053908-4793c484d06f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTc2Mzk1OTYyM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "avatar2",
+      "description": "Avatar for Mike Chen",
+      "imageUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjM5MjU3NzF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man portrait"
+    },
+    {
+      "id": "avatar3",
+      "description": "Avatar for Jessica Brown",
+      "imageUrl": "https://images.unsplash.com/photo-1711645169736-53327e726205?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHx3b21hbiUyMHNtaWxpbmd8ZW58MHx8fHwxNzYzOTE3NjMxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman smiling"
+    },
+    {
+      "id": "avatar4",
+      "description": "Avatar for David Wilson",
+      "imageUrl": "https://images.unsplash.com/photo-1618077360395-f3068be8e001?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtYW4lMjBnbGFzc2VzfGVufDB8fHx8MTc2Mzk1MjE2MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man glasses"
+    },
+    {
+      "id": "avatar5",
+      "description": "Avatar for Emily Jones",
+      "imageUrl": "https://images.unsplash.com/photo-1521252659862-eec69941b071?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHx3b21hbiUyMHByb2ZpbGV8ZW58MHx8fHwxNzYzODc0NjA2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman profile"
+    },
+    {
+      "id": "avatar6",
+      "description": "Avatar for Chris Green",
+      "imageUrl": "https://images.unsplash.com/photo-1639747280804-dd2d6b3d88ac?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtYW4lMjBzbWlsaW5nfGVufDB8fHx8MTc2Mzg1ODIzM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man smiling"
+    }
+  ]
 }
