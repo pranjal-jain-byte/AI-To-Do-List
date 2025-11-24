@@ -203,12 +203,6 @@ export default function DashboardPage() {
   const [taskToEdit, setTaskToEdit] = useState<Partial<Task> | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/start');
-    }
-  }, [isUserLoading, user, router]);
-
   const handleSaveTask = (taskData: Omit<Task, 'id' | 'ownerId' | 'status' | 'version' | 'createdAt' | 'updatedAt' | 'completedAt'> & { id?: string }) => {
     if (!user) return;
 
@@ -247,6 +241,7 @@ export default function DashboardPage() {
         ...teamData,
         members: [user.uid],
         createdAt: serverTimestamp(),
+        summary: ''
     };
     
     addDoc(collection(firestore, 'teams'), newTeam);

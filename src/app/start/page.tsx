@@ -10,14 +10,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FirebaseClientProvider, useUser, useFirestore, useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { doc, serverTimestamp } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 function AuthForm() {
     const router = useRouter();
-    const { setUser } = useUser();
     const firestore = useFirestore();
     const auth = useAuth();
     const { toast } = useToast();
@@ -38,7 +36,7 @@ function AuthForm() {
             await updateProfile(user, { displayName: name });
 
             const userRef = doc(firestore, 'users', user.uid);
-            setDocumentNonBlocking(userRef, {
+            await setDoc(userRef, {
                 id: user.uid,
                 name: name,
                 email: user.email,
@@ -51,7 +49,6 @@ function AuthForm() {
                 }
             }, { merge: true });
 
-            setUser(user);
             router.push('/dashboard');
             toast({
                 title: `Welcome, ${name}!`,
@@ -77,8 +74,7 @@ function AuthForm() {
         const password = (form.elements.namedItem('password') as HTMLInputElement).value;
 
         try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            setUser(userCredential.user);
+            await signInWithEmailAndPassword(auth, email, password);
             router.push('/dashboard');
             toast({
                 title: 'Welcome back!',
