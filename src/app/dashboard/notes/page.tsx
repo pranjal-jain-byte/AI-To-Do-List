@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, serverTimestamp } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function NotesPage() {
     const { user } = useUser();
@@ -83,44 +84,36 @@ export default function NotesPage() {
         }
     };
 
-    const handleAddTasksToMyTasks = async () => {
+    const handleAddTasksToMyTasks = () => {
         if (!extractedTasks || !user) return;
         setIsAddingTasks(true);
 
-        try {
-            const tasksCollection = collection(firestore, 'tasks');
-            for (const taskTitle of extractedTasks) {
-                const newTask: Omit<Task, 'id'> = {
-                    title: taskTitle,
-                    ownerId: user.uid,
-                    status: 'todo',
-                    priority: 'Medium',
-                    dueDate: new Date().toISOString(),
-                    estimatedDuration: 30,
-                    version: 1,
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                    completedAt: null,
-                    tags: ['extracted'],
-                    description: 'Extracted from note.',
-                };
-                await addDoc(tasksCollection, newTask);
-            }
-            toast({
-                title: "Tasks added!",
-                description: `${extractedTasks.length} tasks have been added to your 'My Tasks' list.`,
-            });
-            setIsTasksDialogOpen(false);
-        } catch (error) {
-            console.error("Failed to add tasks:", error);
-            toast({
-                variant: "destructive",
-                title: "Uh oh! Something went wrong.",
-                description: "Could not add extracted tasks.",
-            });
-        } finally {
-            setIsAddingTasks(false);
+        const tasksCollection = collection(firestore, 'tasks');
+        for (const taskTitle of extractedTasks) {
+            const newTask: Omit<Task, 'id'> = {
+                title: taskTitle,
+                ownerId: user.uid,
+                status: 'todo',
+                priority: 'Medium',
+                dueDate: new Date().toISOString(),
+                estimatedDuration: 30,
+                version: 1,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                completedAt: null,
+                tags: ['extracted'],
+                description: 'Extracted from note.',
+            };
+            addDocumentNonBlocking(tasksCollection, newTask);
         }
+
+        toast({
+            title: "Tasks added!",
+            description: `${extractedTasks.length} tasks have been added to your 'My Tasks' list.`,
+        });
+        
+        setIsAddingTasks(false);
+        setIsTasksDialogOpen(false);
     };
 
 
