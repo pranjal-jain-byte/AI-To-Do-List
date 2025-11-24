@@ -62,9 +62,9 @@ export function TaskDialog({ isOpen, onClose, onSave, task }: TaskDialogProps) {
   const firestore = useFirestore();
 
   const teamsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user?.uid) return null;
     return query(collection(firestore, 'teams'), where('members', 'array-contains', user.uid));
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
   const { data: teams } = useCollection<Team>(teamsQuery);
   
