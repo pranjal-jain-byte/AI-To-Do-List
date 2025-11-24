@@ -11,26 +11,42 @@ import { useRouter } from 'next/navigation';
 import { FirebaseClientProvider, useAuth } from '@/firebase';
 import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
+import { FirebaseError } from 'firebase/app';
 
 function LoginPageContent() {
   const router = useRouter();
   const auth = useAuth();
   const { toast } = useToast();
 
-  const handleLogin = (event: React.FormEvent) => {
+  const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
     const email = (form.elements.namedItem('email') as HTMLInputElement).value;
     const password = (form.elements.namedItem('password') as HTMLInputElement).value;
 
-    initiateEmailSignIn(auth, email, password);
-    
-    // Non-blocking, redirect is handled by auth state listener in layout/provider
-    toast({
-      title: 'Logging in...',
-      description: 'You will be redirected shortly.',
-    });
-    router.push('/dashboard');
+    try {
+      await initiateEmailSignIn(auth, email, password);
+      toast({
+        title: 'Logging in...',
+        description: 'You will be redirected shortly.',
+      });
+      router.push('/dashboard');
+    } catch (error) {
+      if (error instanceof FirebaseError && (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found')) {
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: 'Invalid email or password. Please try again.',
+        });
+      } else {
+        console.error("Login failed", error);
+        toast({
+            variant: "destructive",
+            title: "Uh oh! Something went wrong.",
+            description: "Could not log you in.",
+        });
+      }
+    }
   };
 
   return (
