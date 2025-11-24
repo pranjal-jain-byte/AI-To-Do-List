@@ -22,7 +22,7 @@ function TodaysPlan() {
     const firestore = useFirestore();
     
     const tasksQuery = useMemoFirebase(() => {
-        if (!user?.uid) return null; // Wait for user
+        if (!user?.uid) return null; 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
@@ -283,8 +283,9 @@ export default function DashboardPage() {
     setIsTaskDialogOpen(true);
   }
 
-  if (isUserLoading || !user) {
-      return <div className="flex items-center justify-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  // The parent layout now handles the main loading state
+  if (!user) {
+      return null;
   }
 
   return (
@@ -333,5 +334,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
