@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TaskDialog } from '@/components/dashboard/task-dialog';
 import { TeamDialog } from '@/components/dashboard/team-dialog';
-import type { Task, Team, User } from '@/lib/types';
+import type { Task, Team } from '@/lib/types';
 import { suggestTaskOrder } from '@/ai/flows/suggest-task-order';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -130,7 +130,7 @@ function StatsCards() {
         return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
 
-    const { data: userSummary, isLoading } = useDoc<User>(userSummaryDoc);
+    const { data: userSummary, isLoading } = useDoc<any>(userSummaryDoc);
     
     if (isLoading || !userSummary) {
         return (
@@ -196,7 +196,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isUserLoading && !user) {
-      router.push('/login');
+      router.push('/start');
     }
   }, [isUserLoading, user, router]);
 
@@ -285,7 +285,11 @@ export default function DashboardPage() {
 
   // The parent layout now handles the main loading state
   if (isUserLoading || !user) {
-    return null;
+    return (
+        <div className="flex items-center justify-center h-screen">
+            <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+    );
   }
 
   return (

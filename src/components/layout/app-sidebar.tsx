@@ -17,13 +17,13 @@ import Link from 'next/link';
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading, setUser } = useUser();
   const router = useRouter();
   const isActive = (path: string) => pathname === path;
 
   const handleLogout = () => {
-    // In a real app, you'd call firebase.auth().signOut()
-    router.push('/login');
+    setUser(null);
+    router.push('/');
   };
 
   if (isUserLoading) {
@@ -91,12 +91,11 @@ export default function AppSidebar() {
       <SidebarFooter>
         <div className="flex items-center gap-3 p-2 rounded-lg bg-sidebar-accent">
             <Avatar className="h-9 w-9">
-              <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ''} />
+              <AvatarImage src={undefined} alt={user?.displayName || ''} />
               <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-1 overflow-hidden">
                 <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{user?.displayName}</p>
-                <p className="text-xs text-sidebar-foreground/70 truncate">{user?.email}</p>
             </div>
             <button onClick={handleLogout}>
                 <LogOut className="h-5 w-5 text-sidebar-foreground/70 hover:text-sidebar-accent-foreground" />

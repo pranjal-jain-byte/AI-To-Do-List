@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import type { Team, Task, User } from '@/lib/types';
+import type { Team, Task } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Users, List, Clock, CheckCircle2, UserPlus, LogOut, Copy, Loader2 } from 'lucide-react';
@@ -30,11 +30,11 @@ function MemberList({ memberIds }: { memberIds: string[] }) {
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const userDocRef = useMemoFirebase(() => doc(firestore, 'users', id), [firestore, id]);
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        return useDoc<User>(userDocRef);
+        return useDoc<any>(userDocRef);
     });
 
     const isLoading = memberDocs.some(doc => doc.isLoading);
-    const members = memberDocs.map(doc => doc.data).filter((m): m is User => !!m);
+    const members = memberDocs.map(doc => doc.data).filter((m): m is any => !!m);
 
     if (isLoading) {
         return (
@@ -109,7 +109,7 @@ export default function TeamDetailsPage() {
     router.push('/dashboard/teams');
   }
 
-  if (isLoadingTeam) {
+  if (isLoadingTeam || !user) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

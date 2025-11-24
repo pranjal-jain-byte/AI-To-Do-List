@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Team, User } from '@/lib/types';
+import type { Team } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Users, Loader2 } from 'lucide-react';
@@ -20,10 +20,10 @@ function TeamMembers({ memberIds }: { memberIds: string[] }) {
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const userDocRef = useMemoFirebase(() => doc(firestore, 'users', id), [firestore, id]);
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        return useDoc<User>(userDocRef);
+        return useDoc<any>(userDocRef);
     });
 
-    const members = memberDocs.map(doc => doc.data).filter((m): m is User => !!m);
+    const members = memberDocs.map(doc => doc.data).filter((m): m is any => !!m);
 
     return (
         <div className="flex items-center space-x-2">

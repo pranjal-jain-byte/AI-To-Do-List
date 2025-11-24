@@ -47,3 +47,9 @@ export type Team = {
   members: string[]; // array of user IDs
   createdAt: FieldValue;
 };
+
+// Simplified user for non-auth flow
+export interface LocalUser {
+  uid: string;
+  displayName: string;
+}

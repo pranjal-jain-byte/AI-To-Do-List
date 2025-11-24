@@ -16,11 +16,8 @@ export default function LandingPage() {
           <h1 className="text-2xl font-bold text-foreground">Chronos AI</h1>
         </Link>
         <div className="flex items-center gap-4">
-          <Button variant="ghost" asChild>
-            <Link href="/login">Log In</Link>
-          </Button>
           <Button asChild>
-            <Link href="/signup">Get Started</Link>
+            <Link href="/start">Get Started</Link>
           </Button>
         </div>
       </header>
@@ -42,7 +39,7 @@ export default function LandingPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button size="lg" asChild>
-                  <Link href="/signup">Get Started for Free</Link>
+                  <Link href="/start">Get Started for Free</Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild>
                   <Link href="#features">Learn More</Link>
