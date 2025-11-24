@@ -72,7 +72,7 @@ function TodaysPlan() {
         }
     };
     
-    const isLoading = !user?.uid || isLoadingTasks;
+    const isLoading = isLoadingTasks || !user?.uid;
 
     return (
         <Card className="col-span-1 lg:col-span-2">
@@ -82,7 +82,7 @@ function TodaysPlan() {
                     <span>Today's Plan (AI Ordered)</span>
                 </CardTitle>
                 <CardDescription>Your AI-optimized schedule for today.
-                <Button size="sm" variant="outline" className="ml-4" onClick={handleReplan} disabled={isReplanning}>
+                <Button size="sm" variant="outline" className="ml-4" onClick={handleReplan} disabled={isReplanning || isLoading}>
                     {isReplanning ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null }
@@ -91,7 +91,12 @@ function TodaysPlan() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                {isLoading && <p>Loading today's plan...</p>}
+                {isLoading && (
+                    <div className="flex items-center justify-center p-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        <p className="ml-2 text-muted-foreground">Loading today's plan...</p>
+                    </div>
+                )}
                 {!isLoading && todaysTasks && todaysTasks.length > 0 ? (
                 <ul className="space-y-4">
                     {todaysTasks.map((task, index) => (
@@ -289,8 +294,6 @@ export default function DashboardPage() {
 
   // The parent layout now handles the main loading state
   if (isUserLoading || !user) {
-    // This part will likely not be seen because of the new layout structure,
-    // but it's good practice to keep it as a fallback.
     return null;
   }
 
@@ -340,3 +343,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
