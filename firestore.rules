@@ -83,7 +83,7 @@ service cloud.firestore {
      */
     match /teams/{teamId} {
       allow get: if isTeamMember(teamId);
-      allow list: if false; // Disallow listing all teams for security.
+      allow list: if isSignedIn(); // Allows client to perform queries like .where('members', 'array-contains', uid)
       allow create: if isSignedIn() && request.auth.uid in request.resource.data.members;
       allow update: if resource != null && isTeamMember(teamId);
       allow delete: if false; // Deleting teams is a destructive action, disabled for clients.
