@@ -13,39 +13,28 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { AskAiDialog } from '@/components/dashboard/ask-ai-dialog';
 import { createTaskFromText } from '@/ai/flows/create-task-from-text';
-import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, serverTimestamp, addDoc } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where, doc, serverTimestamp, addDoc, updateDoc } from 'firebase/firestore';
 
-function TodaysPlan() {
-    const { user } = useUser();
-    const firestore = useFirestore();
-    
-    const tasksQuery = useMemoFirebase(() => {
-        if (!user?.uid) return null;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return query(
-            collection(firestore, 'tasks'),
-            where('ownerId', '==', user.uid),
-            where('status', '!=', 'done'),
-            where('dueDate', '>=', today.toISOString()),
-            where('dueDate', '<', tomorrow.toISOString())
-        );
-    }, [firestore, user?.uid]);
-
-    const { data: initialTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+function TodaysPlan({ tasks, isLoading }: { tasks: Task[], isLoading: boolean }) {
     const [todaysTasks, setTodaysTasks] = useState<Task[]>([]);
     const [isReplanning, setIsReplanning] = useState(false);
     const { toast } = useToast();
     
     useEffect(() => {
-        if (initialTasks) {
-            setTodaysTasks(initialTasks.slice(0, 5));
-        }
-    }, [initialTasks]);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const filteredTasks = tasks
+            .filter(task => {
+                const dueDate = new Date(task.dueDate);
+                return task.status !== 'done' && dueDate >= today && dueDate < tomorrow;
+            })
+            .slice(0, 5);
+        setTodaysTasks(filteredTasks);
+    }, [tasks]);
 
     const handleReplan = async () => {
         if (!todaysTasks || todaysTasks.length === 0) return;
@@ -71,8 +60,6 @@ function TodaysPlan() {
             setIsReplanning(false);
         }
     };
-    
-    const isLoading = isLoadingTasks || !user?.uid;
 
     return (
         <Card className="col-span-1 lg:col-span-2">
@@ -130,29 +117,16 @@ function TodaysPlan() {
     );
 }
 
-function StatsCards() {
-    const { user } = useUser();
-    const firestore = useFirestore();
-
-    const userSummaryDoc = useMemoFirebase(() => {
-        if (!user) return null;
-        return doc(firestore, 'users', user.uid);
-    }, [firestore, user]);
-
-    const { data: userSummary, isLoading } = useDoc<any>(userSummaryDoc);
-    
-    if (isLoading || !userSummary) {
+function StatsCards({ totalTasks, completedToday, overdueTasks, isLoading }: { totalTasks: number, completedToday: number, overdueTasks: number, isLoading: boolean }) {
+    if (isLoading) {
         return (
             <>
-                <Card><CardContent className="pt-6"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
-                <Card><CardContent className="pt-6"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
-                <Card><CardContent className="pt-6"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
+                <Card><CardContent className="pt-6 h-28 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
+                <Card><CardContent className="pt-6 h-28 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
+                <Card><CardContent className="pt-6 h-28 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
             </>
-        )
+        );
     }
-
-    const summary = userSummary.summary;
-    const overdueTasks = summary?.overdue || 0;
 
     return (
         <>
@@ -162,7 +136,7 @@ function StatsCards() {
                     <List className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{summary?.totalTasks || 0}</div>
+                    <div className="text-2xl font-bold">{totalTasks}</div>
                     <p className="text-xs text-muted-foreground">Across all projects</p>
                 </CardContent>
             </Card>
@@ -173,7 +147,7 @@ function StatsCards() {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">
-                        {summary?.completedToday || 0}
+                        {completedToday}
                     </div>
                     <p className="text-xs text-muted-foreground">Great progress!</p>
                 </CardContent>
@@ -194,7 +168,7 @@ function StatsCards() {
 
 
 export default function DashboardPage() {
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const router = useRouter();
   const firestore = useFirestore();
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
@@ -203,10 +177,42 @@ export default function DashboardPage() {
   const [taskToEdit, setTaskToEdit] = useState<Partial<Task> | null>(null);
   const { toast } = useToast();
 
-  const handleSaveTask = (taskData: Omit<Task, 'id' | 'ownerId' | 'status' | 'version' | 'createdAt' | 'updatedAt' | 'completedAt'> & { id?: string }) => {
+  const tasksQuery = useMemoFirebase(() => {
+    if (!user?.uid) return null;
+    return query(collection(firestore, 'tasks'), where('ownerId', '==', user.uid));
+  }, [firestore, user?.uid]);
+
+  const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+
+  const stats = useMemo(() => {
+    if (!tasks) {
+      return { totalTasks: 0, completedToday: 0, overdueTasks: 0 };
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const completedToday = tasks.filter(task => {
+        if (!task.completedAt) return false;
+        // Firestore serverTimestamp can be a Date object or a Timestamp object
+        const completedDate = (task.completedAt as any).toDate ? (task.completedAt as any).toDate() : new Date(task.completedAt);
+        return completedDate >= today;
+    }).length;
+
+    const overdueTasks = tasks.filter(task => 
+        task.status !== 'done' && new Date(task.dueDate) < today
+    ).length;
+
+    return {
+        totalTasks: tasks.length,
+        completedToday,
+        overdueTasks,
+    };
+  }, [tasks]);
+
+  const handleSaveTask = async (taskData: Omit<Task, 'id' | 'ownerId' | 'status' | 'version' | 'createdAt' | 'updatedAt' | 'completedAt'> & { id?: string }) => {
     if (!user) return;
 
-    const taskToSave: Omit<Task, 'id'> = {
+    const taskToSave = {
         ...taskData,
         ownerId: user.uid,
         status: 'todo',
@@ -220,10 +226,14 @@ export default function DashboardPage() {
     
     if (taskData.id) {
         const taskRef = doc(firestore, 'tasks', taskData.id);
-        setDocumentNonBlocking(taskRef, taskToSave, { merge: true });
+        const existingTask = tasks?.find(t => t.id === taskData.id);
+        await updateDoc(taskRef, {
+          ...taskData,
+          version: (existingTask?.version || 1) + 1,
+          updatedAt: serverTimestamp(),
+        });
     } else {
-        const tasksCol = collection(firestore, 'tasks');
-        addDoc(tasksCol, taskToSave);
+        await addDoc(collection(firestore, 'tasks'), taskToSave);
     }
     
     toast({
@@ -234,17 +244,16 @@ export default function DashboardPage() {
     setTaskToEdit(null);
   };
   
-  const handleSaveTeam = (teamData: Omit<Team, 'id' | 'members' | 'createdAt'>) => {
+  const handleSaveTeam = async (teamData: Omit<Team, 'id' | 'members' | 'createdAt'>) => {
     if(!user) return;
     
     const newTeam: Omit<Team, 'id'> = {
         ...teamData,
         members: [user.uid],
         createdAt: serverTimestamp(),
-        summary: ''
     };
     
-    addDoc(collection(firestore, 'teams'), newTeam);
+    await addDoc(collection(firestore, 'teams'), newTeam);
 
      toast({
         title: "Team created!",
@@ -287,25 +296,25 @@ export default function DashboardPage() {
     setIsTaskDialogOpen(true);
   }
 
-  // The parent layout now handles the main loading state
-  if (isUserLoading || !user) {
-    return null;
-  }
-
   return (
     <>
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold font-headline">Welcome back, {user.displayName?.split(' ')[0]}!</h1>
+        <h1 className="text-3xl font-bold font-headline">Welcome back, {user?.displayName?.split(' ')[0]}!</h1>
         <p className="text-muted-foreground">Here's your productivity snapshot for today.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <StatsCards />
+        <StatsCards 
+            totalTasks={stats.totalTasks}
+            completedToday={stats.completedToday}
+            overdueTasks={stats.overdueTasks}
+            isLoading={isLoadingTasks}
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-          <TodaysPlan />
+          <TodaysPlan tasks={tasks || []} isLoading={isLoadingTasks} />
           <Card className="col-span-1 lg:col-span-1">
               <CardHeader>
                   <CardTitle>Quick Access</CardTitle>
@@ -338,5 +347,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
