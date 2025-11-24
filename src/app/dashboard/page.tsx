@@ -22,7 +22,7 @@ function TodaysPlan() {
     const firestore = useFirestore();
     
     const tasksQuery = useMemoFirebase(() => {
-        if (!user?.uid) return null; 
+        if (!user?.uid) return null;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
@@ -36,7 +36,7 @@ function TodaysPlan() {
         );
     }, [firestore, user?.uid]);
 
-    const { data: initialTasks, isLoading } = useCollection<Task>(tasksQuery);
+    const { data: initialTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
     const [todaysTasks, setTodaysTasks] = useState<Task[]>([]);
     const [isReplanning, setIsReplanning] = useState(false);
     const { toast } = useToast();
@@ -72,6 +72,8 @@ function TodaysPlan() {
         }
     };
     
+    const isLoading = !user?.uid || isLoadingTasks;
+
     return (
         <Card className="col-span-1 lg:col-span-2">
             <CardHeader>
@@ -112,9 +114,11 @@ function TodaysPlan() {
                     ))}
                 </ul>
                 ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                        <p>No tasks due today. Enjoy your day!</p>
-                    </div>
+                    !isLoading && (
+                        <div className="text-center py-8 text-muted-foreground">
+                            <p>No tasks due today. Enjoy your day!</p>
+                        </div>
+                    )
                 )}
             </CardContent>
         </Card>
