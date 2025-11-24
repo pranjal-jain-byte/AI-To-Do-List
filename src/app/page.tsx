@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Clock, Zap } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Clock, Zap, BrainCircuit, Users, BarChart } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { placeholderImages } from '@/lib/placeholder-images';
@@ -44,8 +44,8 @@ export default function LandingPage() {
                 <Button size="lg" asChild>
                   <Link href="/signup">Get Started for Free</Link>
                 </Button>
-                <Button size="lg" variant="outline">
-                  Learn More
+                <Button size="lg" variant="outline" asChild>
+                  <Link href="#features">Learn More</Link>
                 </Button>
               </div>
             </div>
@@ -62,6 +62,58 @@ export default function LandingPage() {
                       className="object-cover"
                     />
                   )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        <section id="features" className="bg-muted py-20 md:py-32">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center space-y-4 mb-12">
+              <h2 className="text-3xl md:text-4xl font-headline font-bold">Why Chronos AI?</h2>
+              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                Discover the features designed to elevate your productivity and streamline your work.
+              </p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-3">
+                    <BrainCircuit className="h-8 w-8 text-primary" />
+                    <span>Intelligent Task Management</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    Let our AI prioritize your tasks, suggest optimal schedules, and even create to-dos from your unstructured notes.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-3">
+                    <Users className="h-8 w-8 text-primary" />
+                    <span>Seamless Collaboration</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    Create teams, assign tasks, and keep everyone in sync. Get AI-generated status summaries for your projects.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-3">
+                    <BarChart className="h-8 w-8 text-primary" />
+                    <span>Actionable Insights</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    Visualize your progress with an intelligent dashboard that tracks your completions, overdue tasks, and more.
+                  </p>
                 </CardContent>
               </Card>
             </div>
