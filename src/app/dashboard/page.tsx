@@ -321,15 +321,15 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            <TodaysPlan tasks={todaysTasks} isLoading={isLoadingTasks} />
-          </div>
-          <div className="lg:col-span-1 space-y-6">
             <StatsCards 
                 totalTasks={stats.totalTasks}
                 completedToday={stats.completedToday}
                 overdueTasks={stats.overdueTasks}
                 isLoading={isLoadingTasks}
             />
+            <TodaysPlan tasks={todaysTasks} isLoading={isLoadingTasks} />
+          </div>
+          <div className="lg:col-span-1 space-y-6">
              <Card>
                 <CardHeader>
                     <CardTitle>Quick Access</CardTitle>
