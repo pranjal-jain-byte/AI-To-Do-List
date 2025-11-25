@@ -119,16 +119,16 @@ function TodaysPlan({ tasks, isLoading }: { tasks: Task[], isLoading: boolean })
 function StatsCards({ totalTasks, completedToday, overdueTasks, isLoading }: { totalTasks: number, completedToday: number, overdueTasks: number, isLoading: boolean }) {
     if (isLoading) {
         return (
-            <>
+            <div className="grid gap-4 md:grid-cols-3">
                 <Card><CardContent className="pt-6 h-28 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
                 <Card><CardContent className="pt-6 h-28 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
                 <Card><CardContent className="pt-6 h-28 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></CardContent></Card>
-            </>
+            </div>
         );
     }
 
     return (
-        <>
+        <div className="grid gap-4 md:grid-cols-3">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
@@ -161,7 +161,7 @@ function StatsCards({ totalTasks, completedToday, overdueTasks, isLoading }: { t
                     <p className="text-xs text-muted-foreground">Tasks needing attention</p>
                 </CardContent>
             </Card>
-        </>
+        </div>
     );
 }
 
@@ -319,28 +319,29 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">Here's your productivity snapshot for today.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <StatsCards 
-            totalTasks={stats.totalTasks}
-            completedToday={stats.completedToday}
-            overdueTasks={stats.overdueTasks}
-            isLoading={isLoadingTasks}
-        />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-          <TodaysPlan tasks={todaysTasks} isLoading={isLoadingTasks} />
-          <Card className="col-span-1 lg:col-span-1">
-              <CardHeader>
-                  <CardTitle>Quick Access</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4">
-                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={openNewTaskDialog}><CheckSquare/>New Task</Button>
-                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => router.push('/dashboard/notes')}><FileText/>New Note</Button>
-                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => setIsTeamDialogOpen(true)}><Users/>New Team</Button>
-                  <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => setIsAiDialogOpen(true)}><Zap/>Ask AI</Button>
-              </CardContent>
-          </Card>
+      <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-6">
+            <TodaysPlan tasks={todaysTasks} isLoading={isLoadingTasks} />
+          </div>
+          <div className="lg:col-span-1 space-y-6">
+            <StatsCards 
+                totalTasks={stats.totalTasks}
+                completedToday={stats.completedToday}
+                overdueTasks={stats.overdueTasks}
+                isLoading={isLoadingTasks}
+            />
+             <Card>
+                <CardHeader>
+                    <CardTitle>Quick Access</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-4">
+                    <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={openNewTaskDialog}><CheckSquare/>New Task</Button>
+                    <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => router.push('/dashboard/notes')}><FileText/>New Note</Button>
+                    <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => setIsTeamDialogOpen(true)}><Users/>New Team</Button>
+                    <Button variant="outline" size="lg" className="h-24 flex-col gap-2" onClick={() => setIsAiDialogOpen(true)}><Zap/>Ask AI</Button>
+                </CardContent>
+            </Card>
+          </div>
       </div>
     </div>
     <TaskDialog
@@ -362,5 +363,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
